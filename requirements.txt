@@ -1,0 +1,6 @@
+streamlit
+supabase 
+pandas
+numpy
+yfinance
+plotly>=5.15.0
