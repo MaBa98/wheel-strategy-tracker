@@ -1,6 +1,6 @@
 import os, streamlit as st
 import asyncio
-
+import pandas as pd
 
 from ui_components import ui_sidebar, main_view
 from data_store import fetch_trades, fetch_cashflows
