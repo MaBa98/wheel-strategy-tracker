@@ -9,7 +9,7 @@ sb = create_client(secrets["supabase"]["url"],
 
 def get_user_id() -> str:
     # MOCK: in futuro usa sb.auth.user().id
-    return "me@example.com"
+    return "942224b5-a311-4408-adfe-91aed81c7337"
 
 def fetch_trades() -> List[Dict]:
     resp = sb.table("trades") \
