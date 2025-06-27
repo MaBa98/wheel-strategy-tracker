@@ -12,6 +12,10 @@ def initialize_session_state():
         st.session_state.cash_flows = fetch_cashflows()
     if 'last_trade_count' not in st.session_state:
         st.session_state.last_trade_count = 0
+    if 'portfolio_history' not in st.session_state:
+        st.session_state.portfolio_history = pd.DataFrame()
+    if 'expired_options_log' not in st.session_state:
+        st.session_state.expired_options_log = pd.DataFrame()
 
 def main():
     st.set_page_config(page_title="Wheel Strategy Tracker", layout="wide")
