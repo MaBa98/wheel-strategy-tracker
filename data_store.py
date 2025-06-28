@@ -5,12 +5,8 @@ from supabase import create_client
 import streamlit as st
 from datetime import date, datetime
 from typing import Dict, List
+from postgrest import APIError
 
-# data_store.py
-
-import os
-from supabase import create_client
-import streamlit as st
 
 def _get_supabase_client():
     # 1) prova env vars
@@ -91,9 +87,11 @@ def fetch_cashflows() -> List[Dict]:
 
 def upsert_cashflow(flow: Dict):
     flow = flow.copy()
-    flow["user_id"] = get_user_id()
+    flow["user_id"] = get_user_id()      # continua a darti una email?
     flow.setdefault("id", str(uuid4()))
     flow = _serialize_dates(flow)
-    sb.table("cashflows").upsert(flow).execute()
-
-
+    try:
+        sb.table("cashflows").upsert(flow).execute()
+    except APIError as e:
+        st.error("❌ Supabase APIError in upsert_cashflow():")
+        st.json(e.args[0])   # ti mostra esattamente il message/hint
