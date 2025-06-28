@@ -35,7 +35,7 @@ sb = _get_supabase_client()
 # ——————————————————————————————————————————————
 def get_user_id() -> str:
     # Temporaneo, finché non imposti auth
-    return "942224b5-a311-4408-adfe-91aed81c73370"
+    return "942224b5-a311-4408-adfe-91aed81c7337"
 
 
 def _serialize_dates(obj: Dict) -> Dict:
