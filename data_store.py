@@ -47,12 +47,22 @@ def _serialize_dates(obj: Dict) -> Dict:
     return out
 
 def fetch_trades() -> List[Dict]:
-    resp = sb.table("trades") \
-             .select("*") \
-             .eq("user_id", get_user_id()) \
-             .order("date", desc=False) \
-             .execute()
-    return resp.data or []
+    """
+    Fa SELECT * su trades; cattura e mostra in chiaro 
+    l’eventuale errore di PostgREST.
+    """
+    try:
+        resp = sb.table("trades")\
+         .select("*")\
+         .order("date", desc=False)\
+         .execute()
+
+        return resp.data or []
+    except APIError as e:
+        err = e.args[0]  # questo è il dict JSON di PostgREST
+        st.error("❌ Supabase APIError in fetch_trades():")
+        st.json(err)     # lo stampi in pagina, così vedi tutto
+        return []
 
 def upsert_trade(trade: Dict):
     trade = trade.copy()
@@ -62,12 +72,22 @@ def upsert_trade(trade: Dict):
     sb.table("trades").upsert(trade).execute()
 
 def fetch_cashflows() -> List[Dict]:
-    resp = sb.table("cashflows") \
-             .select("*") \
-             .eq("user_id", get_user_id()) \
-             .order("date", desc=False) \
-             .execute()
-    return resp.data or []
+    """
+    Fa SELECT * su trades; cattura e mostra in chiaro 
+    l’eventuale errore di PostgREST.
+    """
+    try:
+        resp = sb.table("cashflows")\
+         .select("*")\
+         .order("date", desc=False)\
+         .execute()
+
+        return resp.data or []
+    except APIError as e:
+        err = e.args[0]  # questo è il dict JSON di PostgREST
+        st.error("❌ Supabase APIError in fetch_cashflows():")
+        st.json(err)     # lo stampi in pagina, così vedi tutto
+        return []
 
 def upsert_cashflow(flow: Dict):
     flow = flow.copy()
