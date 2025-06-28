@@ -49,6 +49,7 @@ def _serialize_dates(obj: Dict) -> Dict:
 # ——————————————————————————————————————————————
 # 3) Fetch
 # ——————————————————————————————————————————————
+
 def fetch_trades() -> List[Dict]:
     try:
         resp = (
@@ -57,12 +58,18 @@ def fetch_trades() -> List[Dict]:
               .order("date", desc=False)
               .execute()
         )
-        return resp.data or []
+        rows = resp.data or []
+        # ----- Aggiungi queste righe -----
+        for r in rows:
+            if isinstance(r.get("date"), str):
+                r["date"] = date.fromisoformat(r["date"])
+            if isinstance(r.get("expiry"), str) and r["expiry"]:
+                r["expiry"] = date.fromisoformat(r["expiry"])
+        return rows
     except APIError as e:
         st.error("❌ Supabase APIError in fetch_trades():")
         st.json(e.args[0])
         return []
-
 
 def fetch_cashflows() -> List[Dict]:
     try:
@@ -72,12 +79,17 @@ def fetch_cashflows() -> List[Dict]:
               .order("date", desc=False)
               .execute()
         )
-        return resp.data or []
+        rows = resp.data or []
+        # ----- Aggiungi queste righe -----
+        for r in rows:
+            # converte 'date'
+            if isinstance(r.get("date"), str):
+                r["date"] = date.fromisoformat(r["date"])
+        return rows
     except APIError as e:
         st.error("❌ Supabase APIError in fetch_cashflows():")
         st.json(e.args[0])
         return []
-
 
 # ——————————————————————————————————————————————
 # 4) Upsert
