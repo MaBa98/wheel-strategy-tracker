@@ -23,11 +23,11 @@ def fetch_trades() -> List[Dict]:
     l’eventuale errore di PostgREST.
     """
     try:
-        resp = sb.table("trades") \
-                 .select("*") \
-                 .eq("user_id", get_user_id()) \
-                 .order("date", desc=False) \
-                 .execute()
+        resp = sb.table("trades")\
+         .select("*")\
+         .order("date", desc=False)\
+         .execute()
+
         return resp.data or []
     except APIError as e:
         err = e.args[0]  # questo è il dict JSON di PostgREST
