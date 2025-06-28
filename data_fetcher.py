@@ -1,3 +1,5 @@
+from postgrest import APIError
+import streamlit as st
 import yfinance as yf
 import pandas as pd
 from datetime import timedelta, date
@@ -14,6 +16,24 @@ def fetch_symbol_data(symbol: str, start: date, end: date) -> pd.DataFrame:
     if hist.empty: return pd.DataFrame()
     hist.index = hist.index.tz_localize(None).date
     return hist[['Close']]
+
+def fetch_trades() -> List[Dict]:
+    """
+    Fa SELECT * su trades; cattura e mostra in chiaro 
+    l’eventuale errore di PostgREST.
+    """
+    try:
+        resp = sb.table("trades") \
+                 .select("*") \
+                 .eq("user_id", get_user_id()) \
+                 .order("date", desc=False) \
+                 .execute()
+        return resp.data or []
+    except APIError as e:
+        err = e.args[0]  # questo è il dict JSON di PostgREST
+        st.error("❌ Supabase APIError in fetch_trades():")
+        st.json(err)     # lo stampi in pagina, così vedi tutto
+        return []
 
 async def fetch_all_historical_data(symbols: List[str],
                                     start: date, end: date
