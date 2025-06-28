@@ -61,11 +61,22 @@ def fetch_trades() -> List[Dict]:
         return []
 
 def upsert_trade(trade: Dict):
-    trade = trade.copy()
-    trade["user_id"] = get_user_id()
-    trade.setdefault("id", str(uuid4()))
-    trade = _serialize_dates(trade)
-    sb.table("trades").upsert(trade).execute()
+    # 1) copia e serializza date
+    record = trade.copy()
+    record["user_id"] = get_user_id()
+    record.setdefault("id", str(uuid4()))
+    record = _serialize_dates(record)
+
+    # 2) tieni solo i campi che la tabella trades si aspetta
+    allowed = {
+        "id","user_id","date","symbol","type","quantity",
+        "strike","expiry","premium","stock_price",
+        "commission","multiplier","note"
+    }
+    record = {k: v for k, v in record.items() if k in allowed}
+
+    # 3) invia il JSON “pulito” a Supabase
+    sb.table("trades").upsert(record).execute()
 
 def fetch_cashflows() -> List[Dict]:
     """
@@ -86,12 +97,19 @@ def fetch_cashflows() -> List[Dict]:
         return []
 
 def upsert_cashflow(flow: Dict):
-    flow = flow.copy()
-    flow["user_id"] = get_user_id()      # continua a darti una email?
-    flow.setdefault("id", str(uuid4()))
-    flow = _serialize_dates(flow)
+    # 1) Copia e serializza le date
+    record = flow.copy()
+    record["user_id"] = get_user_id()
+    record.setdefault("id", str(uuid4()))
+    record = _serialize_dates(record)
+
+    # 2) Tieni solo i campi che esistono veramente in public.cashflows
+    allowed = {"id", "user_id", "date", "amount", "note"}
+    record = {k: v for k, v in record.items() if k in allowed}
+
+    # 3) Esegui l’upsert sul “record” “pulito”
     try:
-        sb.table("cashflows").upsert(flow).execute()
+        sb.table("cashflows").upsert(record).execute()
     except APIError as e:
         st.error("❌ Supabase APIError in upsert_cashflow():")
-        st.json(e.args[0])   # ti mostra esattamente il message/hint
+        st.json(e.args[0])
