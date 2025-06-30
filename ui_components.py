@@ -264,9 +264,9 @@ def main_view():
     cols[5].metric("VaR 95%", f"${metrics['VaR 95% ($)']:.2f}")
     cols[6].metric("Commissioni", f"${metrics['Total Commissions $']:.2f}", f"{metrics['Comm Impact %']:.2f}%")
     cols[7].metric("Max DD", f"${metrics['Max Drawdown $']:.2f}", f"{metrics['Max DD Duration (days)']}d")
-    cols[8].metric("Alpha", f"{metrics['Alpha']:.2f}")
-    cols[9].metric("Beta", f"{metrics['Beta']:.2f}")
-    cols[10].metric("R-squared", f"{metrics['R-squared']:.2f}")
+    cols[8].metric("Alpha", f"{metrics.get("Alpha"):.2f}")
+    cols[9].metric("Beta", f"{metrics.get('Beta'):.2f}")
+    cols[10].metric("R-squared", f"{metrics.get('R-squared'):.2f}")
 
     st.markdown("---")
 
