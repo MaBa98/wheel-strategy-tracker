@@ -46,7 +46,7 @@ def get_user_id() -> str:
 def find_user_by_email(email: str) -> str | None:
     """Ritorna id se trova l’email, altrimenti None."""
     resp = sb.table("users") \
-             .select("id") \
+             .select("uuid") \
              .eq("email", email) \
              .single() \
              .execute()
