@@ -435,34 +435,6 @@ class PortfolioProcessor:
         return daily
 
     @staticmethod
-    def build_twr_history(
-        portfolio_history: pd.DataFrame,
-        cash_flows: list[dict]
-    ) -> pd.DataFrame:
-        """
-        Riusa calculate_twr_daily_returns() per
-        generare un df con:
-          - date
-          - twr_subperiod_return
-          - twr_cumulative (chain-linked)
-        """
-        # 1) prendi la serie di rendimenti giornalieri
-        daily_r = PortfolioProcessor.calculate_twr_daily_returns(
-            portfolio_history, cash_flows
-        )
-
-        # 2) costruisci il DataFrame
-        df = pd.DataFrame({
-            "date": daily_r.index,
-            "twr_subperiod_return": daily_r.values
-        })
-
-        # 3) calcola la TWR cumulativa
-        df["twr_cumulative"] = (1 + df["twr_subperiod_return"]).cumprod() - 1
-
-        return df
-    
-    @staticmethod
     def compute_contributions(trades: list[dict]) -> pd.DataFrame:
         """
         Raggruppa per symbol l’impatto P&L totale.
@@ -484,6 +456,10 @@ class PortfolioProcessor:
             records.append({'symbol': t['symbol'], 'pnl': total_pnl})
         df = pd.DataFrame(records)
         df = df.groupby('symbol')['pnl'].sum().reset_index()
+        # aggiunge colonna % sul totale
+        total = df['pnl'].sum()
+        df['pct_of_total'] = df['pnl'] / total * 100
+        return df.sort_values('pct_of_total', ascending=False)
         # aggiunge colonna % sul totale
         total = df['pnl'].sum()
         df['pct_of_total'] = df['pnl'] / total * 100
