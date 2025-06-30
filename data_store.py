@@ -33,10 +33,30 @@ sb = _get_supabase_client()
 # ——————————————————————————————————————————————
 # 2) Helper generici
 # ——————————————————————————————————————————————
+#def get_user_id() -> str:
+    # Temporaneo, finché non imposti auth#
+    #return "942224b5-a311-4408-adfe-91aed81c7337"
 def get_user_id() -> str:
-    # Temporaneo, finché non imposti auth
-    return "942224b5-a311-4408-adfe-91aed81c7337"
+    """Prende lo user_id dalla session, altrimenti crasha."""
+    uid = st.session_state.get("user_id")
+    if not uid:
+        raise RuntimeError("Utente non loggato")
+    return uid
 
+def find_user_by_email(email: str) -> str | None:
+    """Ritorna id se trova l’email, altrimenti None."""
+    resp = sb.table("users") \
+             .select("id") \
+             .eq("email", email) \
+             .single() \
+             .execute()
+    return resp.data["id"] if resp.data else None
+
+def create_user(email: str) -> str:
+    """Crea un nuovo user e ritorna il suo id."""
+    new_id = str(uuid4())
+    sb.table("users").insert({"id": new_id, "email": email}).execute()
+    return new_id
 
 def _serialize_dates(obj: Dict) -> Dict:
     out = obj.copy()
