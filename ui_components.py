@@ -264,8 +264,17 @@ def main_view():
     cols[5].metric("VaR 95%", f"${metrics['VaR 95% ($)']:.2f}")
     cols[6].metric("Commissioni", f"${metrics['Total Commissions $']:.2f}", f"{metrics['Comm Impact %']:.2f}%")
     cols[7].metric("Max DD", f"${metrics['Max Drawdown $']:.2f}", f"{metrics['Max DD Duration (days)']}d")
-    cols[8].metric("Alpha", f"{metrics.get("Alpha"):.2f}")
-    cols[9].metric("Beta", f"{metrics.get('Beta'):.2f}")
+    # recupera alpha/beta in modo “safe”
+    alpha = metrics.get("Alpha") or metrics.get("alpha")
+    beta  = metrics.get("Beta")  or metrics.get("beta")
+    
+    # formatta con fallback
+    alpha_str = f"{alpha:.2%}" if isinstance(alpha, (int, float)) else "–"
+    beta_str  = f"{beta:.2f}"    if isinstance(beta,  (int, float)) else "–"
+    
+    # evita i doppioni di virgolette dentro l'f-string
+    cols[8].metric("Alpha", alpha_str)
+    cols[9].metric("Beta",  beta_str)
     cols[10].metric("R-squared", f"{metrics.get('R-squared'):.2f}")
 
     st.markdown("---")
