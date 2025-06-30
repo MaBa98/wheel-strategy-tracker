@@ -1,4 +1,6 @@
 from postgrest import APIError
+import requests
+from bs4 import BeautifulSoup
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -42,28 +44,45 @@ async def fetch_all_historical_data(symbols: List[str],
     return all_data
 
 
-from Browse import browse # Assicurati di importare lo strumento
-
-@st.cache_data(ttl=86400) #  in cache per 1 giorno per non interrogare  BCE a ogni refresh
+@st.cache_data(ttl=86400) # Mettiamo in cache per 1 giorno
 def fetch_risk_free_rate() -> float:
     """
-    Recupera l'ultimo tasso €STR dalla pagina della BCE e lo converte in formato decimale.
-    Esempio: "1.928" -> 0.01928
+    Recupera l'ultimo tasso €STR dalla pagina della BCE usando requests e BeautifulSoup,
+    e lo converte in formato decimale.
     """
     URL = "https://www.ecb.europa.eu/stats/financial_markets_and_interest_rates/euro_short-term_rate/html/index.en.html"
+    
+    # È buona norma usare un User-Agent per sembrare un browser reale
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+
     try:
-        # Usa lo strumento di Browse per estrarre il dato testuale "Rate"
-        rate_str = browse(query="Rate", url=URL)
-        
-        if rate_str:
-            # Converte la stringa in un numero (float)
+        # Esegui la richiesta GET per ottenere il contenuto HTML della pagina
+        response = requests.get(URL, headers=headers)
+        response.raise_for_status()  # Genera un errore se la richiesta fallisce (es. 404, 500)
+
+        # Crea un oggetto BeautifulSoup per parsare l'HTML
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Trova l'elemento <dd> con la classe 'value' che contiene il tasso.
+        # Questa è la parte cruciale che dipende dalla struttura della pagina HTML.
+        rate_element = soup.find('dd', class_='value')
+
+        if rate_element:
+            rate_str = rate_element.get_text(strip=True)
             rate_float = float(rate_str)
-            # Converte la percentuale in formato decimale (es. 1.928 -> 0.01928)
-            return rate_float / 100
+            return rate_float / 100  # Converte in decimale
         else:
-            st.warning("Non è stato possibile recuperare il risk-free rate. Verrà usato un valore di default.")
-            return 0.05 # Valore di fallback
-            
+            st.warning("Non è stato possibile trovare l'elemento del risk-free rate nella pagina. Verrà usato un valore di default.")
+            return 0.05  # Fallback
+
+    except requests.exceptions.RequestException as e:
+        st.error(f"Errore di rete durante il recupero del risk-free rate: {e}")
+        return 0.05  # Fallback
+    except Exception as e:
+        st.error(f"Errore imprevisto durante il recupero del risk-free rate: {e}")
+        return 0.05  # Fallback
     except Exception as e:
         st.error(f"Errore durante il recupero del risk-free rate: {e}")
         return 0.05 # Valore di fallback in caso di errore
