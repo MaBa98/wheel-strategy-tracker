@@ -44,13 +44,19 @@ def get_user_id() -> str:
     return uid
 
 def find_user_by_email(email: str) -> str | None:
-    """Ritorna id se trova l’email, altrimenti None."""
-    resp = sb.table("users") \
-             .select("uuid") \
-             .eq("email", email) \
-             .single() \
-             .execute()
-    return resp.data["id"] if resp.data else None
+    try:
+        resp = (
+            sb.table("users")
+              .select("id")
+              .eq("email", email)
+              .single()
+              .execute()
+        )
+        return resp.data["id"] if resp.data else None
+    except APIError as e:
+        st.error("❌ Supabase APIError in find_user_by_email():")
+        st.json(e.args[0])     # mostra il JSON d’errore
+        return None
 
 def create_user(email: str) -> str:
     """Crea un nuovo user e ritorna il suo id."""
