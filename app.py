@@ -26,7 +26,11 @@ def main():
         login_view()
         return  # non carico sidebar o main_view finché non loggata/o
 
-    # 2) Altrimenti proseguo
+     # 2) Appena fatto login, carico trades e cash_flows
+    if "trades" not in st.session_state or "cash_flows" not in st.session_state:
+        initialize_session_state()
+    
+    # 3) Altrimenti proseguo
     ui_sidebar()
     main_view()
 
