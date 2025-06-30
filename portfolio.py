@@ -255,6 +255,24 @@ class PortfolioProcessor:
         return pd.DataFrame(portfolio_history), pd.DataFrame(expired_options_log)
 
     @staticmethod
+    def get_current_positions(trades: list[dict]) -> tuple[dict, dict]:
+        """
+        Restituisce (positions, expired_options) a partire da trades.
+        positions: { symbol: net_quantity, … }
+        expired_options: { symbol: [list_of_expired_trades], … }
+        """
+        positions: dict[str,int] = {}
+        expired_options: dict[str,list] = {}
+        for t in trades:
+            # esempio di logica semplice
+            sym = t['symbol']
+            qty = t['quantity']
+            positions[sym] = positions.get(sym, 0) + qty
+            if t.get('expiry') and t['expiry'] < date.today():
+                expired_options.setdefault(sym, []).append(t)
+        return positions, expired_options
+    
+    @staticmethod
     def calculate_performance_metrics(
         history: pd.DataFrame,
         cash_flows: List[Dict] = None,
