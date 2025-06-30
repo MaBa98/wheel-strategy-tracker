@@ -433,3 +433,30 @@ class PortfolioProcessor:
             if prev['portfolio_value'] > 0:
                 daily.append((adj / prev['portfolio_value']) - 1)
         return daily
+
+    @staticmethod
+    def compute_contributions(trades: list[dict]) -> pd.DataFrame:
+        """
+        Raggruppa per symbol l’impatto P&L totale.
+        Ogni trade deve già contenere:
+          - symbol, quantity, premium, stock_price, commission, multiplier
+        Contribution per trade = quantity*(stock_price*multiplier)
+                                 + premium*multiplier
+                                 - commission
+        """
+        records = []
+        for t in trades:
+            qty = t['quantity']
+            mult = t.get('multiplier',100)
+            # pnl da sottostante
+            stock_pnl = qty * t.get('stock_price', 0) * mult
+            opt_pnl   = t.get('premium',0) * mult
+            comm      = t.get('commission',0)
+            total_pnl = stock_pnl + opt_pnl - comm
+            records.append({'symbol': t['symbol'], 'pnl': total_pnl})
+        df = pd.DataFrame(records)
+        df = df.groupby('symbol')['pnl'].sum().reset_index()
+        # aggiunge colonna % sul totale
+        total = df['pnl'].sum()
+        df['pct_of_total'] = df['pnl'] / total * 100
+        return df.sort_values('pct_of_total', ascending=False)
