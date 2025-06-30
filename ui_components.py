@@ -331,7 +331,12 @@ def main_view():
             else:
                 # se manca, creala vuota o con valori NaN a piacere
                 opts_df['expiry'] = None
-            opts_df['posizione'] = opts_df['quantity'].apply(lambda x: 'SHORT' if x<0 else 'LONG')
+            if 'quantity' in opts_df.columns:
+                opts_df['posizione'] = opts_df['quantity'].apply(
+                    lambda x: 'SHORT' if x < 0 else 'LONG'
+                )
+            else:
+                opts_df['posizione'] = None
             st.dataframe(opts_df[['symbol','type','posizione','quantity','strike','expiry','premium']], use_container_width=True)
         else:
             st.info("Nessuna opzione aperta.")
