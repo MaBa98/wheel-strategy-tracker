@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from datetime import date, timedelta
 from typing import List, Dict, Any, Tuple
-
+from scipy.stats import linregress
 # import della funzione async di fetch centralizzata
 #from data_fetcher import fetch_all_historical_data
 from data_fetcher import fetch_all_historical_data, fetch_risk_free_rate
@@ -306,6 +306,19 @@ class PortfolioProcessor:
         dd_std = down_rets.std() * np.sqrt(252)
         sortino = (ann_ret - rf) / dd_std if dd_std > 0 else 0
 
+         # Alpha / Beta rispetto a SPY 
+        alpha_beta_metrics = {}
+        try:
+            import yfinance as yf
+            spy = yf.download('SPY', start=history['date'].min(), end=history['date'].max())
+            spy_ret = spy['Close'].pct_change().dropna().to_numpy()
+
+            port_ret = history['portfolio_value'].pct_change().dropna().to_numpy()
+            min_len = min(len(spy_ret), len(port_ret))
+            alpha_beta_metrics = calculate_alpha_beta(port_ret[-min_len:], spy_ret[-min_len:])
+        except Exception as e:
+            alpha_beta_metrics = {"Alpha (ann.)": None, "Beta": None, "Correlation": None, "R-squared": None}
+            
         # VaR 95% giornaliero ($)
         var95 = -np.percentile(ret, 5) * history['portfolio_value'].iloc[-1]
 
@@ -371,6 +384,7 @@ class PortfolioProcessor:
             "P&L per Symbol": per_symbol,
             "P&L per Strategy": per_type
         }
+        out.update(alpha_beta_metrics)
         return out
 
     @staticmethod
@@ -466,3 +480,25 @@ class PortfolioProcessor:
         total = df['pnl'].sum()
         df['pct_of_total'] = df['pnl'] / total * 100
         return df.sort_values('pct_of_total', ascending=False)
+
+    @staticmethod
+    def calculate_alpha_beta(portfolio_returns: np.ndarray, benchmark_returns: np.ndarray) -> dict:
+    """
+    Calcola alpha, beta e correlazione tra due serie di rendimenti.
+    Entrambe le serie devono essere della stessa lunghezza.
+    """
+    if len(portfolio_returns) != len(benchmark_returns):
+        raise ValueError("Le serie devono avere la stessa lunghezza")
+
+    slope, intercept, r_value, p_value, std_err = linregress(benchmark_returns, portfolio_returns)
+
+    alpha = intercept * 252  # annualizzato (assumendo daily returns)
+    beta = slope
+    correlation = np.corrcoef(portfolio_returns, benchmark_returns)[0,1]
+
+    return {
+        "Alpha (ann.)": alpha * 100,
+        "Beta": beta,
+        "Correlation": correlation,
+        "R-squared": r_value ** 2
+    }
