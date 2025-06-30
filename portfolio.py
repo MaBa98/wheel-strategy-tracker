@@ -4,9 +4,7 @@ import pandas as pd
 import numpy as np
 from datetime import date, timedelta
 from typing import List, Dict, Any, Tuple
-from scipy.stats import linregress
-import pandas as pd
-import statsmodels.api as sm
+
 # import della funzione async di fetch centralizzata
 #from data_fetcher import fetch_all_historical_data
 from data_fetcher import fetch_all_historical_data, fetch_risk_free_rate
@@ -308,20 +306,6 @@ class PortfolioProcessor:
         dd_std = down_rets.std() * np.sqrt(252)
         sortino = (ann_ret - rf) / dd_std if dd_std > 0 else 0
 
-         # Alpha / Beta rispetto a SPY 
-        alpha_beta_metrics = {}
-        try:
-            import yfinance as yf
-            spy = yf.download('SPY', start=history['date'].min(), end=history['date'].max())
-            spy_ret = spy['Close'].pct_change().dropna().to_numpy()
-
-            port_ret = PortfolioProcessor.calculate_twr_daily_returns(history, cash_flows)
-            port_ret = np.array(port_ret)
-            min_len = min(len(spy_ret), len(port_ret))
-            alpha_beta_metrics = PortfolioProcessor.calculate_alpha_beta(port_ret[-min_len:], spy_ret[-min_len:])
-        except Exception as e:
-            alpha_beta_metrics = {"Alpha": None, "Beta": None, "Correlation": None, "R-squared": None}
-            
         # VaR 95% giornaliero ($)
         var95 = -np.percentile(ret, 5) * history['portfolio_value'].iloc[-1]
 
@@ -385,13 +369,8 @@ class PortfolioProcessor:
             **{k: v * 100 for k, v in twr_metrics.items() if k in ["TWR", "Annualized TWR"]},
             "TWR Sharpe Ratio": twr_metrics.get("TWR Sharpe Ratio", 0),
             "P&L per Symbol": per_symbol,
-            "P&L per Strategy": per_type,
-            "Alpha": alpha_beta_metrics,
-            "Beta": beta,
-            "Correlation": correlation,
-            "R-squared": r_value ** 2
+            "P&L per Strategy": per_type
         }
-        #out.update(alpha_beta_metrics)
         return out
 
     @staticmethod
@@ -487,36 +466,3 @@ class PortfolioProcessor:
         total = df['pnl'].sum()
         df['pct_of_total'] = df['pnl'] / total * 100
         return df.sort_values('pct_of_total', ascending=False)
-
-    @staticmethod
-    def calculate_alpha_beta(
-        returns: pd.Series,
-        benchmark: pd.Series
-    ) -> tuple[float, float]:
-        """
-        allinea returns e benchmark sulle date comuni,
-        filtra NaN, fitta OLS e restituisce (alpha, beta).
-        """
-        # 1) rinomina e unisci
-        s_ret = returns.rename("ret")
-        s_bm  = benchmark.rename("bm")
-        df    = pd.concat([s_ret, s_bm], axis=1, join="inner")
-
-        # 2) rimuovi NaN
-        df = df.dropna(subset=["ret", "bm"])
-        if df.shape[0] < 2:
-            # troppo pochi dati per una regressione
-            return 0.0, 0.0
-
-        # 3) setup regression
-        y = df["ret"].astype(float)
-        X = df["bm"].astype(float)
-        X = sm.add_constant(X)   # colonna const per l'intercetta
-
-        # 4) fit OLS
-        model = sm.OLS(y, X).fit()
-
-        # 5) estrai parametri
-        alpha = float(model.params.get("const", 0.0))
-        beta  = float(model.params.get("bm", 0.0))
-        return alpha, beta
