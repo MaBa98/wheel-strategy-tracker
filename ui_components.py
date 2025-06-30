@@ -307,20 +307,21 @@ def main_view():
         st.table(pd.DataFrame.from_dict(m['P&L per Strategy'], orient='index', columns=['P&L $']))
 
     #  — CONTRIBUTO PER SIMBOLO —
-    st.subheader("Contributi P&L per sottostante")
-    contrib_df = PortfolioProcessor.compute_contributions(
-        st.session_state.trades
-    )
-    # Tabella e bar chart side-by-side
-    col1, col2 = st.columns(2)
-    with col1:
-        st.dataframe(contrib_df, use_container_width=True)
-    with col2:
-        st.bar_chart(
-            data=contrib_df.set_index('symbol')['pct_of_total'],
-            use_container_width=True
+    with st.expander("Contibuto per Simbolo", expanded=False):
+        st.subheader("Contributi P&L per sottostante")
+        contrib_df = PortfolioProcessor.compute_contributions(
+            st.session_state.trades
         )
-    st.caption("Percentuale di contributo di ciascun sottostante sul P&L totale.")
+        # Tabella e bar chart side-by-side
+        col1, col2 = st.columns(2)
+        with col1:
+            st.dataframe(contrib_df, use_container_width=True)
+        with col2:
+            st.bar_chart(
+                data=contrib_df.set_index('symbol')['pct_of_total'],
+                use_container_width=True
+            )
+        st.caption("Percentuale di contributo di ciascun sottostante sul P&L totale.")
 
     
     # — POSIZIONI CORRENTI —
