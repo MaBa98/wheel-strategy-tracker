@@ -322,6 +322,13 @@ def main_view():
         st.write("**Opzioni Aperte:**")
         if opts:
             opts_df = pd.DataFrame(opts)
+            # colonne che vorresti mostrare
+            cols = ['symbol', 'type', 'posizione', 'quantity', 'strike', 'expiry', 'premium']
+            
+            # per ogni colonna mancante in opts_df, aggiungila con valori None
+            for c in cols:
+                if c not in opts_df.columns:
+                    opts_df[c] = None
             if 'expiry' in opts_df.columns:
                 # solo se esiste, converte la colonna in ISO string
                 opts_df['expiry'] = (
@@ -337,7 +344,7 @@ def main_view():
                 )
             else:
                 opts_df['posizione'] = None
-            st.dataframe(opts_df[['symbol','type','posizione','quantity','strike','expiry','premium']], use_container_width=True)
+            st.dataframe(opts_df[cols], use_container_width=True)
         else:
             st.info("Nessuna opzione aperta.")
 
