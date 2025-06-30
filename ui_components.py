@@ -8,6 +8,11 @@ import plotly.graph_objects as go
 from data_store import upsert_trade, upsert_cashflow
 from portfolio import PortfolioProcessor
 
+def classify_pos(x):
+    try:
+        return 'SHORT' if x < 0 else 'LONG'
+    except Exception:
+        return None
 
 def ui_sidebar():
     """Disegna la sidebar per l’inserimento dei dati e il reset."""
@@ -339,9 +344,7 @@ def main_view():
                 # se manca, creala vuota o con valori NaN a piacere
                 opts_df['expiry'] = None
             if 'quantity' in opts_df.columns:
-                opts_df['posizione'] = opts_df['quantity'].apply(
-                    lambda x: 'SHORT' if x < 0 else 'LONG'
-                )
+                opts_df['posizione'] = opts_df['quantity'].apply(classify_pos)
             else:
                 opts_df['posizione'] = None
             st.dataframe(opts_df[cols], use_container_width=True)
