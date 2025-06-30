@@ -7,3 +7,4 @@ yfinance
 plotly
 requests        
 beautifulsoup4  
+scipy
