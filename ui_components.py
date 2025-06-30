@@ -322,7 +322,15 @@ def main_view():
         st.write("**Opzioni Aperte:**")
         if opts:
             opts_df = pd.DataFrame(opts)
-            opts_df['expiry'] = pd.to_datetime(opts_df['expiry']).dt.strftime('%Y-%m-%d')
+            if 'expiry' in opts_df.columns:
+                # solo se esiste, converte la colonna in ISO string
+                opts_df['expiry'] = (
+                    pd.to_datetime(opts_df['expiry'], errors='coerce')
+                      .dt.strftime('%Y-%m-%d')
+                )
+            else:
+                # se manca, creala vuota o con valori NaN a piacere
+                opts_df['expiry'] = None
             opts_df['posizione'] = opts_df['quantity'].apply(lambda x: 'SHORT' if x<0 else 'LONG')
             st.dataframe(opts_df[['symbol','type','posizione','quantity','strike','expiry','premium']], use_container_width=True)
         else:
