@@ -434,23 +434,6 @@ class PortfolioProcessor:
                 daily.append((adj / prev['portfolio_value']) - 1)
         return daily
 
-        @staticmethod
-        def fetch_current_prices(symbols: list[str]) -> dict[str, float]:
-            """
-            Dato un elenco di ticker, scarica da yfinance il prezzo di chiusura più
-            recente e lo ritorna come dict {symbol: price}.
-            """
-            prices: dict[str, float] = {}
-            for sym in set(symbols):
-                try:
-                    ticker = yf.Ticker(sym)
-                    hist   = ticker.history(period="1d")
-                    prices[sym] = float(hist["Close"].iloc[-1])
-                except Exception:
-                    # se fallisce, assegna 0
-                    prices[sym] = 0.0
-            return prices
-
     
     @staticmethod
     def compute_contributions(trades: List[Dict]) -> pd.DataFrame:
