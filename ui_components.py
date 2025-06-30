@@ -263,23 +263,22 @@ def main_view():
         st.plotly_chart(fig2, use_container_width=True)
 
     # — TWR —
-    from portfolio import PortfolioProcessor
-
-    st.subheader("Time-Weighted Rate of Return (TWR) nel tempo")
-    twr_df = PortfolioProcessor.build_twr_history(
-        st.session_state.portfolio_history,
-        st.session_state.cash_flows
-    )
-    
-    # Grafico a linea: TWR cumulativa
-    st.line_chart(
-        data=twr_df.set_index("date")["twr_cumulative"],
-        use_container_width=True,
-        height=300
-    )
-    st.caption(
-        "Performance normalizzata: chain-linking dei rendimenti periodici netti di cash flow."
-    )
+    with st.expander("TWR", expanded=False):
+        st.subheader("Time-Weighted Rate of Return (TWR) nel tempo")
+        twr_df = PortfolioProcessor.build_twr_history(
+            st.session_state.portfolio_history,
+            st.session_state.cash_flows
+        )
+        
+        # Grafico a linea: TWR cumulativa
+        st.line_chart(
+            data=twr_df.set_index("date")["twr_cumulative"],
+            use_container_width=True,
+            height=300
+        )
+        st.caption(
+            "Performance normalizzata: chain-linking dei rendimenti periodici netti di cash flow."
+        )
 
     # — METRICHE DI RISCHIO —
     with st.expander("🔬 Analisi Quantitativa", expanded=False):
