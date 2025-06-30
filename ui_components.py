@@ -307,12 +307,30 @@ def main_view():
             help=f"Da {start_date} a {end_date}"
         )
         # mini-sparkline
-        cumret = (prices / p0 - 1).rename("cumret")
-        col2.line_chart(
-            data=cumret,
-            use_container_width=True,
-            height=100
+        cumret = (prices / p0 - 1).rename("cumret")# 2) Estrai TWR cumulativa della tua strategia dalla history
+        twr_df = st.session_state.history.copy()
+        twr_df["date"] = pd.to_datetime(twr_df["date"])
+        user_twr = twr_df.set_index("date")["twr_cumulative"].rename("Portfolio TWR")
+        
+        # 3) Unisci le due serie in un unico DataFrame, con inner‐join sulle date
+        df_plot = pd.concat([cumret, user_twr], axis=1, join="inner").dropna()
+        
+        # 4) Disegna con Plotly Express
+        fig = px.line(
+            df_plot,
+            x=df_plot.index,
+            y=df_plot.columns,
+            labels={"value":"Return", "index":"Date"},
+            title=f"{bench_ticker} vs Portfolio TWR",
+            template="plotly_white",
         )
+        
+        # 5) Formatta l’asse Y in percentuale e aggiungi un legend
+        fig.update_yaxes(tickformat=".1%")
+        fig.update_layout(legend=dict(title="", orientation="h", y=1.02, x=0))
+        
+        # Stampa il grafico nella colonna di destra (sostituisce col2.line_chart)
+        col2.plotly_chart(fig, use_container_width=True, height=300)
     st.markdown("---")
     
     # — GRAFICI DI PERFORMANCE —
