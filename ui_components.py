@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from data_store import upsert_trade, upsert_cashflow
+from data_store import find_user_by_email, create_user
 from portfolio import PortfolioProcessor
 
 def classify_pos(x):
@@ -13,6 +14,39 @@ def classify_pos(x):
         return 'SHORT' if x < 0 else 'LONG'
     except Exception:
         return None
+
+def login_view():
+    st.title("👋 Benvenuto su Wheel Strategy Tracker")
+    st.write("Per favore inserisci la tua email per continuare.")
+
+    email = st.text_input("Email", placeholder="nome@dominio.com")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("🔑 Sono un utente esistente"):
+            if not email:
+                st.error("Inserisci un’email valida.")
+            else:
+                uid = find_user_by_email(email)
+                if uid:
+                    st.session_state.user_id = uid
+                    st.experimental_rerun()
+                else:
+                    st.error("Email non trovata. Prova a registrarti qui sotto.")
+
+    with col2:
+        if st.button("🆕 Nuova registrazione"):
+            if not email:
+                st.error("Inserisci un’email valida.")
+            else:
+                # se esiste già, avvisa, altrimenti crea
+                if find_user_by_email(email):
+                    st.warning("Questa email esiste già, prova a loggare.")
+                else:
+                    uid = create_user(email)
+                    st.success("Registrazione avvenuta! Benvenuto 🎉")
+                    st.session_state.user_id = uid
+                    st.experimental_rerun()
 
 def ui_sidebar():
     """Disegna la sidebar per l’inserimento dei dati e il reset."""
@@ -168,6 +202,9 @@ def ui_sidebar():
         st.markdown("---")
         if st.button("🔄 Resetta Sessione", type="secondary"):
             st.session_state.clear()
+            st.experimental_rerun()
+        if st.button("Logout"):
+            del st.session_state["user_id"]
             st.experimental_rerun()
 
 
