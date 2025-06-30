@@ -458,7 +458,7 @@ class PortfolioProcessor:
 
             if t.get("type") == "stock":
                 entry_price = t.get("stock_price", 0)
-                cur_price   = current_prices.get(sym, 0)
+                cur_price   = self.get_price_on_date(historical_prices.get(symb, pd.DataFrame()), current_date)
                 stock_pnl   = (cur_price - entry_price) * qty * mult
                 opt_pnl     = 0
             else:
