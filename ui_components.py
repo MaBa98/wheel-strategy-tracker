@@ -217,13 +217,13 @@ def main_view():
     with col1:
         if st.button("🔄 Refresh Dati", type="secondary"):
             st.session_state.last_trade_count = -1
-            st.experimental_rerun()
+            #st.experimental_rerun()
     with col2:
         if st.button("📊 Ricalcola Tutto", type="primary"):
             st.session_state.portfolio_history = pd.DataFrame()
             st.session_state.expired_options_log = pd.DataFrame()
             st.session_state.last_trade_count = -1
-            st.experimental_rerun()
+            #st.experimental_rerun()
 
     # Controllo se serve ricalcolare lo storico
     trade_count = len(st.session_state.trades) + len(st.session_state.cash_flows)
