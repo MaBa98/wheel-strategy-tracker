@@ -262,23 +262,31 @@ def main_view():
                            yaxis_title="$")
         st.plotly_chart(fig2, use_container_width=True)
 
-    # — TWR —
-    with st.expander("TWR", expanded=False):
-        st.subheader("Time-Weighted Rate of Return (TWR) nel tempo")
-        twr_df = PortfolioProcessor.build_twr_history(
-            st.session_state.portfolio_history,
-            st.session_state.cash_flows
-        )
-        
-        # Grafico a linea: TWR cumulativa
-        st.line_chart(
-            data=twr_df.set_index("date")["twr_cumulative"],
-            use_container_width=True,
-            height=300
-        )
-        st.caption(
-            "Performance normalizzata: chain-linking dei rendimenti periodici netti di cash flow."
-        )
+    # — TWR vs MWR —
+    with st.expander("📊 Analisi Time-Weighted Return (TWR)", expanded=False):
+        st.subheader("TWR vs MWR")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.metric("TWR", f"{metrics.get('TWR',0):.2f}%")
+            st.metric("TWR Ann.", f"{metrics.get('Annualized TWR',0):.2f}%")
+        with c2:
+            st.metric("MWR (Total Return)", f"{metrics['Total Return %']:.2f}%")
+            diff = metrics.get('TWR',0) - metrics['Total Return %']
+            st.metric("Diff TWR-MWR", f"{diff:.2f}%")
+        if len(history_df) > 1:
+            fig_twr = go.Figure()
+            cum_twr = (1 + history_df['portfolio_value'].pct_change().fillna(0)).cumprod() - 1
+            fig_twr.add_trace(go.Scatter(
+                x=history_df['date'], y=cum_twr*100,
+                name="TWR Approssimato", line=dict(color='blue')))
+            fig_twr.add_trace(go.Scatter(
+                x=history_df['date'],
+                y=(history_df['equity_line_pnl']/history_df['cumulative_cash_flow'].abs())*100,
+                name="MWR", line=dict(color='red', dash='dash')))
+            fig_twr.update_layout(template='plotly_white',
+                                  title="Confronto TWR vs MWR",
+                                  yaxis_title="Return %")
+            st.plotly_chart(fig_twr, use_container_width=True)
 
     # — METRICHE DI RISCHIO —
     with st.expander("🔬 Analisi Quantitativa", expanded=False):
