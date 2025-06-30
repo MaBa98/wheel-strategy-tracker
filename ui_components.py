@@ -272,11 +272,7 @@ def main_view():
     # ── Benchmark Performance ────────────────────────────────────────────
     st.markdown("### 📈 Benchmark Performance")
     # 1) selezione del ticker
-    bench_ticker = st.selectbox(
-        "Seleziona benchmark", 
-        options=["SPY","QQQ","^GSPC","^IXIC","^FTSE"], 
-        help="Scegli il ticker Yahoo Finance (ETF o indice)"
-    )
+    bench_ticker = st.text_input("Simbolo (Ticker)", "SPY").upper()
 
     # 2) calcolo della data di partenza dalla prima operazione
     #    (minimo fra trade.date e cashflow.date)
