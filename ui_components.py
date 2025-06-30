@@ -255,7 +255,7 @@ def main_view():
     )
     latest = history_df.iloc[-1]
 
-    cols = st.columns(8)
+    cols = st.columns(12)
     cols[0].metric("Portafoglio", f"${latest['portfolio_value']:,.2f}")
     cols[1].metric("P&L Totale", f"${metrics['Total P&L']:,.2f}", f"{metrics['Total Return %']:.2f}%")
     cols[2].metric("TWR", f"{metrics.get('TWR',0):.2f}%", f"Ann: {metrics.get('Annualized TWR',0):.2f}%")
@@ -264,6 +264,9 @@ def main_view():
     cols[5].metric("VaR 95%", f"${metrics['VaR 95% ($)']:.2f}")
     cols[6].metric("Commissioni", f"${metrics['Total Commissions $']:.2f}", f"{metrics['Comm Impact %']:.2f}%")
     cols[7].metric("Max DD", f"${metrics['Max Drawdown $']:.2f}", f"{metrics['Max DD Duration (days)']}d")
+    cols[8].metric("Alpha", f"{metrics['Alpha (ann.)']:.2f}")
+    cols[9].metric("Beta", f"{metrics['Beta']:.2f}")
+    cols[10].metric("R-squared", f"{metrics['R-squared']:.2f}")
 
     st.markdown("---")
 
