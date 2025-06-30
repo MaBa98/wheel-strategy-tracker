@@ -8,6 +8,8 @@ import plotly.graph_objects as go
 from data_store import upsert_trade, upsert_cashflow
 from data_store import find_user_by_email, create_user
 from portfolio import PortfolioProcessor
+from datetime import date
+from data_fetcher import fetch_price_series
 
 def classify_pos(x):
     try:
@@ -267,6 +269,56 @@ def main_view():
 
     st.markdown("---")
 
+    # ── Benchmark Performance ────────────────────────────────────────────
+    st.markdown("### 📈 Benchmark Performance")
+    # 1) selezione del ticker
+    bench_ticker = st.selectbox(
+        "Seleziona benchmark", 
+        options=["SPY","QQQ","^GSPC","^IXIC","^FTSE"], 
+        help="Scegli il ticker Yahoo Finance (ETF o indice)"
+    )
+
+    # 2) calcolo della data di partenza dalla prima operazione
+    #    (minimo fra trade.date e cashflow.date)
+    all_dates = []
+    for t in st.session_state.trades:
+        all_dates.append(t["date"])
+    for cf in st.session_state.cash_flows:
+        all_dates.append(cf["date"])
+    # se sono strings, convertirle in date
+    if all_dates and isinstance(all_dates[0], str):
+        all_dates = [pd.to_datetime(d).date() for d in all_dates]
+    start_date = min(all_dates) if all_dates else date.today()
+    end_date   = date.today()
+
+    # 3) fetch e calcolo rendimento percentuale
+    with st.spinner(f"Scarico {bench_ticker} da {start_date} a oggi…"):
+        prices = fetch_price_series(bench_ticker, start_date, end_date)
+    if prices.empty:
+        st.warning("Nessun dato restituito per il benchmark in questo intervallo.")
+    else:
+        # primo e ultimo prezzo
+        p0 = float(prices.iloc[0])
+        p1 = float(prices.iloc[-1])
+        ret = (p1 - p0) / p0
+
+        # 4) visualizzazione
+        col1, col2 = st.columns([2,1])
+        col1.metric(
+            label=f"Rendimento {bench_ticker}",
+            value=f"{ret*100:.2f}%",
+            delta=None,
+            help=f"Da {start_date} a {end_date}"
+        )
+        # mini-sparkline
+        cumret = (prices / p0 - 1).rename("cumret")
+        col2.line_chart(
+            data=cumret,
+            use_container_width=True,
+            height=100
+        )
+    st.markdown("---")
+    
     # — GRAFICI DI PERFORMANCE —
     with st.expander("Grafici di Performance", expanded=True):
         st.subheader("Andamento Portafoglio & P&L")
