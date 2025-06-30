@@ -1,5 +1,6 @@
 streamlit
 supabase 
+postgrest
 pandas
 numpy
 yfinance
