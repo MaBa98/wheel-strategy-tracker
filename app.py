@@ -2,7 +2,8 @@ import os, streamlit as st
 import asyncio
 import pandas as pd
 
-from ui_components import ui_sidebar, main_view
+#from ui_components import ui_sidebar, main_view
+from ui_components import login_view, ui_sidebar, main_view
 from data_store import fetch_trades, fetch_cashflows
 
 def initialize_session_state():
@@ -19,7 +20,13 @@ def initialize_session_state():
 
 def main():
     st.set_page_config(page_title="Wheel Strategy Tracker", layout="wide")
-    initialize_session_state()
+
+    # 1) Se non ho user_id in sessione, vado su login
+    if "user_id" not in st.session_state:
+        login_view()
+        return  # non carico sidebar o main_view finché non loggata/o
+
+    # 2) Altrimenti proseguo
     ui_sidebar()
     main_view()
 
