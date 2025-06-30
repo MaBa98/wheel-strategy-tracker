@@ -43,6 +43,25 @@ async def fetch_all_historical_data(symbols: List[str],
     progress.empty(); status.empty()
     return all_data
 
+def fetch_price_series(
+    ticker: str,
+    start: date,
+    end: date
+) -> pd.Series:
+    """
+    Scarica da Yahoo Finance la serie dei prezzi di chiusura 
+    adjusted per `ticker` fra start (incluso) ed end (escluso).
+    Ritorna pd.Series indexed by date.
+    """
+    df = yf.Ticker(ticker).history(
+        start=start.isoformat(),
+        end=end.isoformat(),
+        auto_adjust=True
+    )
+    # se non ci sono dati, ritorna serie vuota
+    if df.empty:
+        return pd.Series(dtype=float)
+    return df["Close"].rename(ticker)
 
 @st.cache_data(ttl=86400) # Mettiamo in cache per 1 giorno
 def fetch_risk_free_rate() -> float:
