@@ -313,11 +313,12 @@ class PortfolioProcessor:
             spy = yf.download('SPY', start=history['date'].min(), end=history['date'].max())
             spy_ret = spy['Close'].pct_change().dropna().to_numpy()
 
-            port_ret = history['portfolio_value'].pct_change().dropna().to_numpy()
+            port_ret = PortfolioProcessor.calculate_twr_daily_returns(history, cash_flows)
+            port_ret = np.array(port_ret)
             min_len = min(len(spy_ret), len(port_ret))
             alpha_beta_metrics = PortfolioProcessor.calculate_alpha_beta(port_ret[-min_len:], spy_ret[-min_len:])
         except Exception as e:
-            alpha_beta_metrics = {"Alpha (ann.)": None, "Beta": None, "Correlation": None, "R-squared": None}
+            alpha_beta_metrics = {"Alpha": None, "Beta": None, "Correlation": None, "R-squared": None}
             
         # VaR 95% giornaliero ($)
         var95 = -np.percentile(ret, 5) * history['portfolio_value'].iloc[-1]
