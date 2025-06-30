@@ -245,7 +245,7 @@ def main_view():
         st.info("Aggiungi almeno un trade o un flusso di cassa nella sidebar.")
         return
     
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+
     # — KPI PRINCIPALI —
     st.header("📈 Dashboard Principale")
     metrics = PortfolioProcessor.calculate_performance_metrics(
@@ -440,4 +440,3 @@ def main_view():
             st.dataframe(cdf, use_container_width=True)
         else:
             st.info("Nessun flusso di cassa.")
-    st.markdown('</div>', unsafe_allow_html=True)
