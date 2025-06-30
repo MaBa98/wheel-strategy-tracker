@@ -267,25 +267,6 @@ def main_view():
 
     st.markdown("---")
 
-    with st.spinner("Calcolo alpha e beta…"):
-        alpha, beta = PortfolioProcessor.calculate_alpha_beta(
-            st.session_state.portfolio_returns,
-            st.session_state.benchmark_returns
-        )
-    
-    # Formatta con fallback
-    alpha_str = f"{alpha:.2%}" if alpha else "–"
-    beta_str  = f"{beta:.2f}"  if beta  else "–"
-    
-    # Metriche
-    cols = st.columns(2)
-    cols[0].metric("Alpha", alpha_str,
-                   delta=None,
-                   help="Intercept della regressione dei rendimenti.")
-    cols[1].metric("Beta", beta_str,
-                   delta=None,
-                   help="Sensibilità ai movimenti del benchmark.")
-    
     # — GRAFICI DI PERFORMANCE —
     with st.expander("Grafici di Performance", expanded=True):
         st.subheader("Andamento Portafoglio & P&L")
