@@ -5,6 +5,8 @@ import numpy as np
 from datetime import date, timedelta
 from typing import List, Dict, Any, Tuple
 from scipy.stats import linregress
+import pandas as pd
+import statsmodels.api as sm
 # import della funzione async di fetch centralizzata
 #from data_fetcher import fetch_all_historical_data
 from data_fetcher import fetch_all_historical_data, fetch_risk_free_rate
@@ -383,9 +385,13 @@ class PortfolioProcessor:
             **{k: v * 100 for k, v in twr_metrics.items() if k in ["TWR", "Annualized TWR"]},
             "TWR Sharpe Ratio": twr_metrics.get("TWR Sharpe Ratio", 0),
             "P&L per Symbol": per_symbol,
-            "P&L per Strategy": per_type
+            "P&L per Strategy": per_type,
+            "Alpha": alpha_beta_metrics,
+            "Beta": beta,
+            "Correlation": correlation,
+            "R-squared": r_value ** 2
         }
-        out.update(alpha_beta_metrics)
+        #out.update(alpha_beta_metrics)
         return out
 
     @staticmethod
@@ -483,23 +489,34 @@ class PortfolioProcessor:
         return df.sort_values('pct_of_total', ascending=False)
 
     @staticmethod
-    def calculate_alpha_beta(portfolio_returns: np.ndarray, benchmark_returns: np.ndarray) -> dict:
+    def calculate_alpha_beta(
+        returns: pd.Series,
+        benchmark: pd.Series
+    ) -> tuple[float, float]:
         """
-        Calcola alpha, beta e correlazione tra due serie di rendimenti.
-        Entrambe le serie devono essere della stessa lunghezza.
+        allinea returns e benchmark sulle date comuni,
+        filtra NaN, fitta OLS e restituisce (alpha, beta).
         """
-        if len(portfolio_returns) != len(benchmark_returns):
-            raise ValueError("Le serie devono avere la stessa lunghezza")
-    
-        slope, intercept, r_value, p_value, std_err = linregress(benchmark_returns, portfolio_returns)
-    
-        alpha = intercept * 252  # annualizzato (assumendo daily returns)
-        beta = slope
-        correlation = np.corrcoef(portfolio_returns, benchmark_returns)[0,1]
-    
-        return {
-            "Alpha": alpha * 100,
-            "Beta": beta,
-            "Correlation": correlation,
-            "R-squared": r_value ** 2
-        }
+        # 1) rinomina e unisci
+        s_ret = returns.rename("ret")
+        s_bm  = benchmark.rename("bm")
+        df    = pd.concat([s_ret, s_bm], axis=1, join="inner")
+
+        # 2) rimuovi NaN
+        df = df.dropna(subset=["ret", "bm"])
+        if df.shape[0] < 2:
+            # troppo pochi dati per una regressione
+            return 0.0, 0.0
+
+        # 3) setup regression
+        y = df["ret"].astype(float)
+        X = df["bm"].astype(float)
+        X = sm.add_constant(X)   # colonna const per l'intercetta
+
+        # 4) fit OLS
+        model = sm.OLS(y, X).fit()
+
+        # 5) estrai parametri
+        alpha = float(model.params.get("const", 0.0))
+        beta  = float(model.params.get("bm", 0.0))
+        return alpha, beta
