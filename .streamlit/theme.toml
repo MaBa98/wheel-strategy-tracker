@@ -1,0 +1,13 @@
+[theme]
+base="light"               # tema chiaro di default
+primaryColor="#0066CC"     # blu acceso per pulsanti e link
+backgroundColor="#F5F5F5"  # leggero grigio per sfondi
+secondaryBackgroundColor="#FFFFFF"
+textColor="#333333"
+font="Inter"               # o "Roboto", "Open Sans"
+[theme.dark]
+base="dark"
+primaryColor="#3399FF"
+backgroundColor="#1E1E1E"
+secondaryBackgroundColor="#2C2C2C"
+textColor="#EEEEEE"
