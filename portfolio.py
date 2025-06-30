@@ -315,7 +315,7 @@ class PortfolioProcessor:
 
             port_ret = history['portfolio_value'].pct_change().dropna().to_numpy()
             min_len = min(len(spy_ret), len(port_ret))
-            alpha_beta_metrics = calculate_alpha_beta(port_ret[-min_len:], spy_ret[-min_len:])
+            alpha_beta_metrics = PortfolioProcessor.calculate_alpha_beta(port_ret[-min_len:], spy_ret[-min_len:])
         except Exception as e:
             alpha_beta_metrics = {"Alpha (ann.)": None, "Beta": None, "Correlation": None, "R-squared": None}
             
