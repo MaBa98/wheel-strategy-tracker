@@ -30,7 +30,7 @@ def login_view():
                 uid = find_user_by_email(email)
                 if uid:
                     st.session_state.user_id = uid
-                    st.experimental_rerun()
+                    #st.experimental_rerun()
                 else:
                     st.error("Email non trovata. Prova a registrarti qui sotto.")
 
@@ -46,7 +46,7 @@ def login_view():
                     uid = create_user(email)
                     st.success("Registrazione avvenuta! Benvenuto 🎉")
                     st.session_state.user_id = uid
-                    st.experimental_rerun()
+                    #st.experimental_rerun()
 
 def ui_sidebar():
     """Disegna la sidebar per l’inserimento dei dati e il reset."""
