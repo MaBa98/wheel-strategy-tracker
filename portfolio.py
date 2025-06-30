@@ -6,7 +6,8 @@ from datetime import date, timedelta
 from typing import List, Dict, Any, Tuple
 
 # import della funzione async di fetch centralizzata
-from data_fetcher import fetch_all_historical_data
+#from data_fetcher import fetch_all_historical_data
+from data_fetcher import fetch_all_historical_data, fetch_risk_free_rate
 
 # configurazione globale
 CONFIG = {
@@ -284,10 +285,11 @@ class PortfolioProcessor:
         """
         if history.empty:
             return {}
-
+        
         # rendimenti giornalieri
         ret = history['portfolio_value'].pct_change().dropna()
-        rf = CONFIG['risk_free_rate']
+        #rf = CONFIG['risk_free_rate']
+        rf = fetch_risk_free_rate()
 
         # annualizza return e volatilità
         ann_ret = ret.mean() * 252
