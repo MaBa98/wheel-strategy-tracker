@@ -498,7 +498,7 @@ class PortfolioProcessor:
         correlation = np.corrcoef(portfolio_returns, benchmark_returns)[0,1]
     
         return {
-            "Alpha (ann.)": alpha * 100,
+            "Alpha": alpha * 100,
             "Beta": beta,
             "Correlation": correlation,
             "R-squared": r_value ** 2
