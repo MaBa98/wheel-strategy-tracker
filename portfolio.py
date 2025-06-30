@@ -483,22 +483,22 @@ class PortfolioProcessor:
 
     @staticmethod
     def calculate_alpha_beta(portfolio_returns: np.ndarray, benchmark_returns: np.ndarray) -> dict:
-    """
-    Calcola alpha, beta e correlazione tra due serie di rendimenti.
-    Entrambe le serie devono essere della stessa lunghezza.
-    """
-    if len(portfolio_returns) != len(benchmark_returns):
-        raise ValueError("Le serie devono avere la stessa lunghezza")
-
-    slope, intercept, r_value, p_value, std_err = linregress(benchmark_returns, portfolio_returns)
-
-    alpha = intercept * 252  # annualizzato (assumendo daily returns)
-    beta = slope
-    correlation = np.corrcoef(portfolio_returns, benchmark_returns)[0,1]
-
-    return {
-        "Alpha (ann.)": alpha * 100,
-        "Beta": beta,
-        "Correlation": correlation,
-        "R-squared": r_value ** 2
-    }
+        """
+        Calcola alpha, beta e correlazione tra due serie di rendimenti.
+        Entrambe le serie devono essere della stessa lunghezza.
+        """
+        if len(portfolio_returns) != len(benchmark_returns):
+            raise ValueError("Le serie devono avere la stessa lunghezza")
+    
+        slope, intercept, r_value, p_value, std_err = linregress(benchmark_returns, portfolio_returns)
+    
+        alpha = intercept * 252  # annualizzato (assumendo daily returns)
+        beta = slope
+        correlation = np.corrcoef(portfolio_returns, benchmark_returns)[0,1]
+    
+        return {
+            "Alpha (ann.)": alpha * 100,
+            "Beta": beta,
+            "Correlation": correlation,
+            "R-squared": r_value ** 2
+        }
