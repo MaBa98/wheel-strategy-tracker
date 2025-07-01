@@ -227,6 +227,11 @@ def main_view():
             st.session_state.last_trade_count = -1
             #st.experimental_rerun()
 
+    processor = PortfolioProcessor(
+        st.session_state.trades,
+        st.session_state.cash_flows
+    )
+    
     # Controllo se serve ricalcolare lo storico
     trade_count = len(st.session_state.trades) + len(st.session_state.cash_flows)
     if trade_count != st.session_state.last_trade_count:
