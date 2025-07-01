@@ -272,48 +272,96 @@ def main_view():
 
     # ── Benchmark Performance ────────────────────────────────────────────
     st.markdown("### 📈 Benchmark Performance")
-    # 1) selezione del ticker
     bench_ticker = st.text_input("Simbolo (Ticker)", "SPY").upper()
-
-    # 2) calcolo della data di partenza dalla prima operazione
-    #    (minimo fra trade.date e cashflow.date)
+    
+    # Calcolo date
     all_dates = []
     for t in st.session_state.trades:
         all_dates.append(t["date"])
     for cf in st.session_state.cash_flows:
         all_dates.append(cf["date"])
-    # se sono strings, convertirle in date
     if all_dates and isinstance(all_dates[0], str):
         all_dates = [pd.to_datetime(d).date() for d in all_dates]
     start_date = min(all_dates) if all_dates else date.today()
-    end_date   = date.today()
-
-    # 3) fetch e calcolo rendimento percentuale
+    end_date = date.today()
+    
+    # Fetch benchmark
     with st.spinner(f"Scarico {bench_ticker} da {start_date} a oggi…"):
         prices = fetch_price_series(bench_ticker, start_date, end_date)
+    
     if prices.empty:
         st.warning("Nessun dato restituito per il benchmark in questo intervallo.")
     else:
-        # primo e ultimo prezzo
+        # Calcolo rendimenti benchmark
         p0 = float(prices.iloc[0])
         p1 = float(prices.iloc[-1])
-        ret = (p1 - p0) / p0
-
-        # 4) visualizzazione
-        col1, col2 = st.columns([2,1])
-        col1.metric(
-            label=f"Rendimento {bench_ticker}",
-            value=f"{ret*100:.2f}%",
-            delta=None,
-            help=f"Da {start_date} a {end_date}"
-        )
-        # mini-sparkline
-        cumret = (prices / p0 - 1).rename("cumret")
-        col2.line_chart(
-            data=cumret,
-            use_container_width=True,
-            height=100
-        )
+        bench_ret = (p1 - p0) / p0
+        bench_cumret = (prices / p0 - 1) * 100  # in percentuale
+        
+        # Calcolo TWR del portafoglio normalizzato alle date del benchmark
+        if not history_df.empty:
+            # Filtra history_df per le date disponibili nel benchmark
+            history_subset = history_df[
+                (history_df['date'] >= prices.index[0].date()) & 
+                (history_df['date'] <= prices.index[-1].date())
+            ].copy()
+            
+            if not history_subset.empty:
+                # Calcola TWR cumulativo del portafoglio
+                initial_value = history_subset['cumulative_cash_flow'].iloc[0]
+                portfolio_twr = ((history_subset['equity_line_pnl'] / abs(initial_value)) * 100) if initial_value != 0 else pd.Series([0])
+                
+                # Allinea le date per il confronto
+                portfolio_twr.index = history_subset['date']
+                
+        # Visualizzazione con grafici side-by-side
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            st.metric(
+                label=f"Rendimento {bench_ticker}",
+                value=f"{bench_ret*100:.2f}%",
+                help=f"Da {start_date} a {end_date}"
+            )
+            if not history_df.empty and 'portfolio_twr' in locals():
+                portfolio_final_twr = portfolio_twr.iloc[-1] if len(portfolio_twr) > 0 else 0
+                st.metric(
+                    label="TWR Portafoglio",
+                    value=f"{portfolio_final_twr:.2f}%",
+                    delta=f"{portfolio_final_twr - bench_ret*100:.2f}% vs {bench_ticker}",
+                    help="Time-Weighted Return del portafoglio"
+                )
+        
+        with col2:
+            # Grafico combinato
+            fig_bench = go.Figure()
+            
+            # Benchmark
+            fig_bench.add_trace(go.Scatter(
+                x=prices.index,
+                y=bench_cumret,
+                name=f"{bench_ticker} Return",
+                line=dict(color='blue', width=2)
+            ))
+            
+            # TWR Portafoglio (se disponibile)
+            if not history_df.empty and 'portfolio_twr' in locals() and len(portfolio_twr) > 0:
+                fig_bench.add_trace(go.Scatter(
+                    x=portfolio_twr.index,
+                    y=portfolio_twr.values,
+                    name="Portfolio TWR",
+                    line=dict(color='green', width=2)
+                ))
+            
+            fig_bench.update_layout(
+                title=f"Confronto Performance: {bench_ticker} vs Portfolio TWR",
+                yaxis_title="Rendimento Cumulativo (%)",
+                xaxis_title="Data",
+                template='plotly_white',
+                height=300
+            )
+            
+            st.plotly_chart(fig_bench, use_container_width=True)
     st.markdown("---")
     
     # — GRAFICI DI PERFORMANCE —
