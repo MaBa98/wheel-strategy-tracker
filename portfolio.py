@@ -161,24 +161,24 @@ class PortfolioProcessor:
                             # premio già incassato -> considerato P&L
                             pnl = abs(premium)
                             # genera trade di azioni
-                            contracts = abs(qty)
-                            share_qty = contracts * multiplier
-                            if opt['type'] == 'put':
-                                assign_qty = share_qty
-                            else:
-                                assign_qty = -share_qty
+                            #contracts = abs(qty)
+                            #share_qty = contracts * multiplier
+                            #if opt['type'] == 'put':
+                                #assign_qty = share_qty
+                            #else:
+                                #assign_qty = -share_qty
 
-                            assignment_trade = {
-                                'date': current_date,
-                                'symbol': symbol,
-                                'type': 'stock',
-                                'quantity': assign_qty,
-                                'stock_price': strike,
-                                'commission': 0.0,
-                                'note': f"Assegnazione da {opt['type'].title()} strike {strike}",
-                                'unique_id': len(self.trades) + len(expired_options_log)
-                            }
-                            self.trades.append(assignment_trade)
+                            #assignment_trade = {
+                                #'date': current_date,
+                                #'symbol': symbol,
+                                #'type': 'stock',
+                                #'quantity': assign_qty,
+                                #'stock_price': strike,
+                                #'commission': 0.0,
+                                #'note': f"Assegnazione da {opt['type'].title()} strike {strike}",
+                                #'unique_id': len(self.trades) + len(expired_options_log)
+                            #}
+                            #self.trades.append(assignment_trade)
                         else:
                             # scaduta OTM
                             pnl = abs(premium)
