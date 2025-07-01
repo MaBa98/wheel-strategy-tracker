@@ -401,30 +401,30 @@ def main_view():
         st.plotly_chart(fig2, use_container_width=True)
 
     # — TWR vs MWR —
-    with st.expander("📊 Analisi Time-Weighted Return (TWR)", expanded=False):
-        st.subheader("TWR vs MWR")
-        c1, c2 = st.columns(2)
-        with c1:
-            st.metric("TWR", f"{metrics.get('TWR',0):.2f}%")
-            st.metric("TWR Ann.", f"{metrics.get('Annualized TWR',0):.2f}%")
-        with c2:
-            st.metric("MWR (Total Return)", f"{metrics['Total Return %']:.2f}%")
-            diff = metrics.get('TWR',0) - metrics['Total Return %']
-            st.metric("Diff TWR-MWR", f"{diff:.2f}%")
-        if len(history_df) > 1:
-            fig_twr = go.Figure()
-            cum_twr = (1 + history_df['portfolio_value'].pct_change().fillna(0)).cumprod() - 1
-            fig_twr.add_trace(go.Scatter(
-                x=history_df['date'], y=cum_twr*100,
-                name="TWR Approssimato", line=dict(color='blue')))
-            fig_twr.add_trace(go.Scatter(
-                x=history_df['date'],
-                y=(history_df['equity_line_pnl']/history_df['cumulative_cash_flow'].abs())*100,
-                name="MWR", line=dict(color='red', dash='dash')))
-            fig_twr.update_layout(template='plotly_white',
-                                  title="Confronto TWR vs MWR",
-                                  yaxis_title="Return %")
-            st.plotly_chart(fig_twr, use_container_width=True)
+    #with st.expander("📊 Analisi Time-Weighted Return (TWR)", expanded=False):
+        #st.subheader("TWR vs MWR")
+        #c1, c2 = st.columns(2)
+        #with c1:
+            #st.metric("TWR", f"{metrics.get('TWR',0):.2f}%")
+            #st.metric("TWR Ann.", f"{metrics.get('Annualized TWR',0):.2f}%")
+        #with c2:
+            #st.metric("MWR (Total Return)", f"{metrics['Total Return %']:.2f}%")
+            #diff = metrics.get('TWR',0) - metrics['Total Return %']
+            #st.metric("Diff TWR-MWR", f"{diff:.2f}%")
+        #if len(history_df) > 1:
+            #fig_twr = go.Figure()
+            #cum_twr = (1 + history_df['portfolio_value'].pct_change().fillna(0)).cumprod() - 1
+            #fig_twr.add_trace(go.Scatter(
+                #x=history_df['date'], y=cum_twr*100,
+                #name="TWR Approssimato", line=dict(color='blue')))
+            #fig_twr.add_trace(go.Scatter(
+                #x=history_df['date'],
+                #y=(history_df['equity_line_pnl']/history_df['cumulative_cash_flow'].abs())*100,
+                #name="MWR", line=dict(color='red', dash='dash')))
+            #fig_twr.update_layout(template='plotly_white',
+                                  #title="Confronto TWR vs MWR",
+                                  #yaxis_title="Return %")
+            #st.plotly_chart(fig_twr, use_container_width=True)
 
     # — METRICHE DI RISCHIO —
     with st.expander("🔬 Analisi Quantitativa", expanded=False):
@@ -445,21 +445,21 @@ def main_view():
         st.table(pd.DataFrame.from_dict(m['P&L per Strategy'], orient='index', columns=['P&L $']))
 
     #  — CONTRIBUTO PER SIMBOLO —
-    with st.expander("Contibuto per Simbolo", expanded=False):
-        st.subheader("Contributi P&L per sottostante")
-        contrib_df = PortfolioProcessor.compute_contributions(
-            st.session_state.trades
-        )
+    #with st.expander("Contibuto per Simbolo", expanded=False):
+        #st.subheader("Contributi P&L per sottostante")
+        #contrib_df = PortfolioProcessor.compute_contributions(
+            #st.session_state.trades
+        #)
         # Tabella e bar chart side-by-side
-        col1, col2 = st.columns(2)
-        with col1:
-            st.dataframe(contrib_df, use_container_width=True)
-        with col2:
-            st.bar_chart(
-                data=contrib_df.set_index('symbol')['pct_of_total'],
-                use_container_width=True
-            )
-        st.caption("Percentuale di contributo di ciascun sottostante sul P&L totale.")
+        #col1, col2 = st.columns(2)
+        #with col1:
+            #st.dataframe(contrib_df, use_container_width=True)
+        #with col2:
+            #st.bar_chart(
+                #data=contrib_df.set_index('symbol')['pct_of_total'],
+                #use_container_width=True
+            #)
+        #st.caption("Percentuale di contributo di ciascun sottostante sul P&L totale.")
 
     
     # — POSIZIONI CORRENTI —
