@@ -302,47 +302,19 @@ class PortfolioProcessor:
         cash_flows = self.cash_flows
 
         # Calcoli iniziali (rendimenti, rf, etc.) rimangono uguali...
-        twr_daily_returns = self.calculate_twr_daily_returns(history, cash_flows)
-    
-        if len(twr_daily_returns) > 1:
-            # Converti in numpy array per calcoli
-            twr_returns = np.array(twr_daily_returns)
-            
-            # Calcoli basati su TWR
-            rf = fetch_risk_free_rate()
-            ann_twr_return = np.mean(twr_returns) * 252
-            ann_twr_vol = np.std(twr_returns) * np.sqrt(252)
-            
-            # SORTINO RATIO CORRETTO - basato su TWR
-            downside_returns = twr_returns[twr_returns < 0]
-            if len(downside_returns) > 0:
-                downside_deviation = np.std(downside_returns) * np.sqrt(252)
-                sortino_twr = (ann_twr_return - rf) / downside_deviation
-            else:
-                sortino_twr = 0.0
-            
-            # SHARPE RATIO basato su TWR
-            sharpe_twr = (ann_twr_return - rf) / ann_twr_vol if ann_twr_vol > 0 else 0
-            
-        else:
-            ann_twr_return = 0
-            ann_twr_vol = 0
-            sortino_twr = 0
-            sharpe_twr = 0
-    
-        # Calcoli legacy per compatibilità (usando portfolio_value)
         ret = history['portfolio_value'].pct_change().dropna()
+        rf = fetch_risk_free_rate()
         ann_ret = ret.mean() * 252
         ann_vol = ret.std() * np.sqrt(252)
-        
-        # Altri calcoli rimangono uguali...
         total_pnl = history['equity_line_pnl'].iloc[-1]
         init_cf = history['cumulative_cash_flow'].iloc[0] or 1
         total_ret_pct = total_pnl / abs(init_cf) * 100
-        
-        var95 = -np.percentile(twr_returns, 5) * history['portfolio_value'].iloc[-1] if len(twr_returns) > 0 else 0
-        
-        # Drawdown calculations
+        sharpe = (ann_ret - rf) / ann_vol if ann_vol > 0 else 0
+        down_rets = ret[ret < 0]
+        dd_std = down_rets.std() * np.sqrt(252)
+        sortino = (ann_ret - rf) / dd_std if dd_std > 0 else 0
+        #sortino = (twr_metrics.get("TWR", 0) - rf) / dd_std if dd_std > 0 else 0 
+        var95 = -np.percentile(ret, 5) * history['portfolio_value'].iloc[-1]
         eq = history['equity_line_pnl']
         running_max = eq.cummax()
         drawdown = running_max - eq
@@ -352,7 +324,6 @@ class PortfolioProcessor:
             cur = cur + 1 if flag else (durations.append(cur) or 0)
         durations.append(cur)
         max_dd_duration = max(durations)
-        
         total_comm = sum(t.get('commission', 0) for t in trades) if trades else 0
         comm_impact_pct = total_comm / abs(init_cf) * 100
 
@@ -415,17 +386,23 @@ class PortfolioProcessor:
         twr_metrics = {}
         if cash_flows:
             twr_metrics = self.calculate_twr(history, cash_flows)
+            twr_daily = self.calculate_twr_daily_returns(history, cash_flows)
+            if len(twr_daily) > 1:
+                mu = np.mean(twr_daily) * 252
+                sigma = np.std(twr_daily) * np.sqrt(252)
+                sr_twr = (mu - rf) / sigma if sigma > 0 else 0
+            else:
+                sr_twr = 0
+            twr_metrics["TWR Sharpe Ratio"] = sr_twr
         
         # Compone il dict finale
         out = {
             "Total P&L": total_pnl,
             "Total Return %": total_ret_pct,
-            "Annual Return %": ann_ret * 100,  # Legacy
-            "Annual TWR Return %": ann_twr_return * 100,  # Nuovo
-            "Annual Volatility %": ann_vol * 100,  # Legacy
-            "Annual TWR Volatility %": ann_twr_vol * 100,  # Nuovo
-            "Sharpe Ratio": sharpe_twr,  # Ora basato su TWR
-            "Sortino Ratio": sortino_twr,  # Ora basato su TWR
+            "Annual Return %": ann_ret * 100,
+            "Annual Volatility %": ann_vol * 100,
+            "Sharpe Ratio": sharpe,
+            "Sortino Ratio": sortino,
             "VaR 95% ($)": var95,
             "Max Drawdown $": max_dd,
             "Max DD Duration (days)": max_dd_duration,
@@ -433,8 +410,9 @@ class PortfolioProcessor:
             "Comm Impact %": comm_impact_pct,
             "TWR": twr_metrics.get("TWR", 0) * 100,
             "Annualized TWR": twr_metrics.get("Annualized TWR", 0) * 100,
-            "TWR Sharpe Ratio": sharpe_twr,  # Stesso valore
-            # Aggiungi le tue altre metriche...
+            "TWR Sharpe Ratio": twr_metrics.get("TWR Sharpe Ratio", 0),
+            "P&L per Symbol": per_symbol_pnl,
+            "P&L per Strategy": per_type_pnl
         }
         return out
 
