@@ -256,22 +256,35 @@ class PortfolioProcessor:
         return pd.DataFrame(portfolio_history), pd.DataFrame(expired_options_log)
 
     @staticmethod
-    def get_current_positions(trades: list[dict]) -> tuple[dict, dict]:
+    @staticmethod
+    def get_current_positions(trades: list[dict]) -> tuple[dict, list[dict]]:
         """
-        Restituisce (positions, expired_options) a partire da trades.
-        positions: { symbol: net_quantity, … }
-        expired_options: { symbol: [list_of_expired_trades], … }
+        Analizza i trade e restituisce le posizioni aperte separando azioni e opzioni.
+        Restituisce una tupla: (stock_positions, open_options)
+        - stock_positions: { simbolo: quantità_netta, ... }
+        - open_options: [ lista di dizionari dei trade di opzioni aperte ]
         """
-        positions: dict[str,int] = {}
-        expired_options: dict[str,list] = {}
+        stock_positions: dict[str, int] = {}
+        open_options: list[dict] = []
+        today = date.today()
+
         for t in trades:
-            # esempio di logica semplice
-            sym = t['symbol']
-            qty = t['quantity']
-            positions[sym] = positions.get(sym, 0) + qty
-            if t.get('expiry') and t['expiry'] < date.today():
-                expired_options.setdefault(sym, []).append(t)
-        return positions, expired_options
+            symbol = t['symbol']
+            
+            # --- Logica per le Azioni ---
+            if t['type'] == 'stock':
+                qty = t['quantity']
+                stock_positions[symbol] = stock_positions.get(symbol, 0) + qty
+            
+            # --- Logica per le Opzioni ---
+            elif t['type'] in ['put', 'call']:
+                expiry_date = t.get('expiry')
+                
+                # Un'opzione è considerata aperta se la sua data di scadenza è oggi o nel futuro.
+                if expiry_date and expiry_date >= today:
+                    open_options.append(t)
+
+        return stock_positions, open_options
     
     @staticmethod
     def calculate_performance_metrics(
