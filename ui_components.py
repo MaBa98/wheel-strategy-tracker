@@ -250,11 +250,7 @@ def main_view():
 
     # — KPI PRINCIPALI —
     st.header("📈 Dashboard Principale")
-    metrics = PortfolioProcessor.calculate_performance_metrics(
-        history_df,
-        cash_flows=st.session_state.cash_flows,
-        trades=st.session_state.trades
-    )
+    metrics = processor.calculate_performance_metrics(history_df)
     latest = history_df.iloc[-1]
 
     cols = st.columns(8)
