@@ -7,31 +7,26 @@ from ui_components import login_view, ui_sidebar, main_view
 from data_store import fetch_trades, fetch_cashflows
 
 
-def initialize_session_state():
-    if 'trades' not in st.session_state:
-        st.session_state.trades = fetch_trades()
-    if 'cash_flows' not in st.session_state:
-        st.session_state.cash_flows = fetch_cashflows()
-    if 'last_trade_count' not in st.session_state:
-        st.session_state.last_trade_count = 0
-    if 'portfolio_history' not in st.session_state:
-        st.session_state.portfolio_history = pd.DataFrame()
-    if 'expired_options_log' not in st.session_state:
-        st.session_state.expired_options_log = pd.DataFrame()
-
 def main():
     st.set_page_config(page_title="Wheel Strategy Tracker", layout="wide")
 
-    # 1) Se non ho user_id in sessione, vado su login
+    # 1) Se l'utente non è loggato, mostra la vista di login e ferma l'esecuzione
     if "user_id" not in st.session_state:
         login_view()
-        return  # non carico sidebar o main_view finché non loggata/o
+        return
 
-     # 2) Appena fatto login, carico trades e cash_flows
-    if "trades" not in st.session_state or "cash_flows" not in st.session_state:
-        initialize_session_state()
-    
-    # 3) Altrimenti proseguo
+    # 2) Se l'utente è loggato ma i suoi dati non sono ancora stati caricati, caricali ora.
+    #    Questo blocco viene eseguito solo una volta dopo il login.
+    if "trades" not in st.session_state:
+        with st.spinner("Caricamento dati utente..."):
+            st.session_state.trades = fetch_trades()
+            st.session_state.cash_flows = fetch_cashflows()
+            # Inizializza le altre variabili di stato necessarie
+            st.session_state.last_trade_count = 0
+            st.session_state.portfolio_history = pd.DataFrame()
+            st.session_state.expired_options_log = pd.DataFrame()
+
+    # 3) Se l'utente è loggato e i dati sono presenti, mostra l'app principale
     ui_sidebar()
     main_view()
 
