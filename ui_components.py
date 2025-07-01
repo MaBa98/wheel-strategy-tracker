@@ -260,7 +260,7 @@ def main_view():
 
     cols = st.columns(8)
     cols[0].metric("Portafoglio", f"${latest['portfolio_value']:,.2f}")
-    cols[1].metric("P&L Totale", f"${metrics['Total P&L']:,.2f}", f"{metrics['Total Return %']:.2f}%")
+    cols[1].metric("P&L Totale", f"${metrics['Total P&L']:,.2f}") #f"{metrics['Total Return %']:.2f}%"
     cols[2].metric("TWR", f"{metrics.get('TWR',0):.2f}%", f"Ann: {metrics.get('Annualized TWR',0):.2f}%")
     cols[3].metric("Sharpe-TWR", f"{metrics.get('TWR Sharpe Ratio',0):.2f}")
     cols[4].metric("Sortino", f"{metrics['Sortino Ratio']:.2f}")
