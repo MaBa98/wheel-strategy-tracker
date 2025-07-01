@@ -18,7 +18,7 @@ def classify_pos(x):
         return None
 
 def login_view():
-    st.title("👋 Benvenuto su Wheel Strategy Tracker")
+    st.title("👋 Benvenuto")
     st.write("Per favore inserisci la tua email per continuare.")
 
     email = st.text_input("Email", placeholder="nome@dominio.com")
@@ -212,7 +212,7 @@ def ui_sidebar():
 
 def main_view():
     """Disegna la vista principale con grafici, KPI e tabelle."""
-    st.title("⚙️ Pro Wheel Strategy Tracker")
+    st.title("📖 Position Keeper")
 
     # Pulsanti per refresh e ricalcolo
     col1, col2, _ = st.columns([1, 1, 4])
