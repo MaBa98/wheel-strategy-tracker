@@ -77,15 +77,17 @@ def _serialize_dates(obj: Dict) -> Dict:
 # ——————————————————————————————————————————————
 
 def fetch_trades() -> List[Dict]:
+    """Carica i trade SOLO per l'utente loggato."""
     try:
+        user_id = get_user_id()  # Prende l'ID dell'utente dalla sessione
         resp = (
             sb.table("trades")
               .select("*")
+              .eq("user_id", user_id)  # <-- FILTRO DECISIVO: user_id deve corrispondere
               .order("date", desc=False)
               .execute()
         )
         rows = resp.data or []
-        # ----- Aggiungi queste righe -----
         for r in rows:
             if isinstance(r.get("date"), str):
                 r["date"] = date.fromisoformat(r["date"])
@@ -93,29 +95,36 @@ def fetch_trades() -> List[Dict]:
                 r["expiry"] = date.fromisoformat(r["expiry"])
         return rows
     except APIError as e:
-        st.error("❌ Supabase APIError in fetch_trades():")
-        st.json(e.args[0])
+        st.error(f"❌ Supabase APIError in fetch_trades(): {e.message}")
+        return []
+    except RuntimeError as e: # Gestisce il caso in cui l'utente non sia loggato
+        st.warning(f"Tentativo di fetch_trades senza utente loggato.")
         return []
 
+
 def fetch_cashflows() -> List[Dict]:
+    """Carica i flussi di cassa SOLO per l'utente loggato."""
     try:
+        user_id = get_user_id() # Prende l'ID dell'utente dalla sessione
         resp = (
             sb.table("cashflows")
               .select("*")
+              .eq("user_id", user_id)  # <-- FILTRO DECISIVO: user_id deve corrispondere
               .order("date", desc=False)
               .execute()
         )
         rows = resp.data or []
-        # ----- Aggiungi queste righe -----
         for r in rows:
-            # converte 'date'
             if isinstance(r.get("date"), str):
                 r["date"] = date.fromisoformat(r["date"])
         return rows
     except APIError as e:
-        st.error("❌ Supabase APIError in fetch_cashflows():")
-        st.json(e.args[0])
+        st.error(f"❌ Supabase APIError in fetch_cashflows(): {e.message}")
         return []
+    except RuntimeError as e: # Gestisce il caso in cui l'utente non sia loggato
+        st.warning(f"Tentativo di fetch_cashflows senza utente loggato.")
+        return []
+
 
 # ——————————————————————————————————————————————
 # 4) Upsert
