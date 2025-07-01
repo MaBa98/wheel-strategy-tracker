@@ -27,7 +27,8 @@ async def fetch_all_historical_data(symbols: List[str],
     all_data = {}
     progress = st.progress(0)
     status = st.empty()
-    with ThreadPoolExecutor(10) as ex:
+    #potenzialmente più lento ma con 10 va in range limit
+    with ThreadPoolExecutor(3) as ex:
         loop = asyncio.get_event_loop()
         tasks = [
           loop.run_in_executor(ex, fetch_symbol_data, sym, start, end)
