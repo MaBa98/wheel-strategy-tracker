@@ -307,13 +307,15 @@ def main_view():
             ].copy()
             
             if not history_subset.empty:
-                # Calcola TWR cumulativo del portafoglio
-                #initial_value = history_subset['cumulative_cash_flow'].iloc[0]
-                #portfolio_twr = ((history_subset['equity_line_pnl'] / abs(initial_value)) * 100) if initial_value != 0 else pd.Series([0])
-                portfolio_twr = metrics.get('TWR', 0)
+                # Usa     lo stesso metodo TWR della dashboard principale
+                portfolio_twr_data = processor.calculate_twr_daily_returns(history_subset, st.session_state.cash_flows)
                 
-                # Allinea le date per il confronto
-                portfolio_twr.index = history_subset['date']
+                # Calcola TWR cumulativo dalle daily returns
+                if portfolio_twr_data:
+                    portfolio_twr_cumulative = pd.Series(portfolio_twr_data).add(1).cumprod().sub(1).mul(100)
+                    portfolio_twr_cumulative.index = history_subset['date'].iloc[1:len(portfolio_twr_cumulative)+1]
+                else:
+                    portfolio_twr_cumulative = pd.Series([0], index=[history_subset['date'].iloc[0]])
                 
         # Visualizzazione con grafici side-by-side
         col1, col2 = st.columns([1, 2])
@@ -325,7 +327,7 @@ def main_view():
                 help=f"Da {start_date} a {end_date}"
             )
             if not history_df.empty and 'portfolio_twr' in locals():
-                portfolio_final_twr = portfolio_twr.iloc[-1] if len(portfolio_twr) > 0 else 0
+                portfolio_final_twr = portfolio_twr_cumulative.iloc[-1] if len(portfolio_twr_cumulative) > 0 else 0
                 st.metric(
                     label="TWR Portafoglio",
                     value=f"{portfolio_final_twr:.2f}%",
@@ -346,10 +348,10 @@ def main_view():
             ))
             
             # TWR Portafoglio (se disponibile)
-            if not history_df.empty and 'portfolio_twr' in locals() and len(portfolio_twr) > 0:
+            if not history_df.empty and 'portfolio_twr_cumulative' in locals() and len(portfolio_twr_cumulative) > 0:
                 fig_bench.add_trace(go.Scatter(
-                    x=portfolio_twr.index,
-                    y=portfolio_twr.values,
+                    x=portfolio_twr_cumulative.index,
+                    y=portfolio_twr_cumulative.values,
                     name="Portfolio TWR",
                     line=dict(color='green', width=2)
                 ))
