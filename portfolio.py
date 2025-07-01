@@ -332,45 +332,54 @@ class PortfolioProcessor:
 
         if trades:
             df_t = pd.DataFrame(trades)
-            
-            # 1. Calcola il puro flusso di cassa per ogni trade
+            today = history['date'].iloc[-1]
+
+            # Funzione helper per il cash flow
             def net_cf(tr):
                 if tr['type'] == 'stock':
                     return -tr['quantity'] * tr['stock_price'] - tr.get('commission', 0)
                 prem = tr.get('premium', 0)
                 sign = 1 if tr['quantity'] < 0 else -1
                 return sign * prem - tr.get('commission', 0)
-            
             df_t['net_cf'] = df_t.apply(net_cf, axis=1)
-            per_symbol_pnl = df_t.groupby('symbol')['net_cf'].sum().to_dict()
-            per_type_pnl = df_t.groupby('type')['net_cf'].sum().to_dict()
 
-            # 2. Aggiungi il valore di mercato (Mark-to-Market) delle posizioni aperte
-            today = history['date'].iloc[-1]
             stock_positions, open_options = self.get_current_positions(trades)
+            
+            # --- 1. Calcolo P&L per le Azioni ---
+            df_stock = df_t[df_t['type'] == 'stock']
+            stock_cf_by_symbol = df_stock.groupby('symbol')['net_cf'].sum()
 
-            # Aggiungi valore delle azioni aperte
+            stock_mv_by_symbol = {}
             for symbol, qty in stock_positions.items():
                 if qty != 0:
-                    latest_price = self.get_price_on_date(self.historical_prices.get(symbol), today)
-                    market_value = qty * latest_price
-                    per_symbol_pnl[symbol] = per_symbol_pnl.get(symbol, 0) + market_value
-                    per_type_pnl['stock'] = per_type_pnl.get('stock', 0) + market_value
+                    price = self.get_price_on_date(self.historical_prices.get(symbol), today)
+                    stock_mv_by_symbol[symbol] = qty * price
+            
+            stock_pnl_by_symbol = stock_cf_by_symbol.add(pd.Series(stock_mv_by_symbol, name='mv'), fill_value=0)
+            per_type_pnl['stock'] = stock_pnl_by_symbol.sum()
 
-            # Aggiungi valore delle opzioni aperte
+            # --- 2. Calcolo P&L per le Opzioni ---
+            df_options = df_t[df_t['type'].isin(['put', 'call'])]
+            option_cf_by_symbol = df_options.groupby('symbol')['net_cf'].sum()
+            option_cf_by_type = df_options.groupby('type')['net_cf'].sum()
+
+            option_mv_by_symbol = {}
+            option_mv_by_type = {'put': 0.0, 'call': 0.0}
             for opt in open_options:
                 price_now = self.get_price_on_date(self.historical_prices.get(opt['symbol']), today)
-                intrinsic = 0
-                if opt['type'] == 'put':
-                    intrinsic = max(0, opt['strike'] - price_now)
-                else: # call
-                    intrinsic = max(0, price_now - opt['strike'])
-                
-                val = intrinsic * abs(opt['quantity']) * opt.get('multiplier', 100)
-                market_value = -val if opt['quantity'] < 0 else val
+                intrinsic = max(0, opt['strike'] - price_now) if opt['type'] == 'put' else max(0, price_now - opt['strike'])
+                market_value = intrinsic * abs(opt['quantity']) * opt.get('multiplier', 100)
+                market_value = -market_value if opt['quantity'] < 0 else market_value # Valore negativo per opzioni short
 
-                per_symbol_pnl[opt['symbol']] = per_symbol_pnl.get(opt['symbol'], 0) + market_value
-                per_type_pnl[opt['type']] = per_type_pnl.get(opt['type'], 0) + market_value
+                option_mv_by_symbol[opt['symbol']] = option_mv_by_symbol.get(opt['symbol'], 0) + market_value
+                option_mv_by_type[opt['type']] += market_value
+            
+            option_pnl_by_symbol = option_cf_by_symbol.add(pd.Series(option_mv_by_symbol, name='mv'), fill_value=0)
+            per_type_pnl['put'] = option_cf_by_type.get('put', 0) + option_mv_by_type.get('put', 0)
+            per_type_pnl['call'] = option_cf_by_type.get('call', 0) + option_mv_by_type.get('call', 0)
+
+            # --- 3. Calcolo P&L Totale per Simbolo ---
+            per_symbol_pnl = stock_pnl_by_symbol.add(option_pnl_by_symbol, fill_value=0).to_dict()
         
         # Calcoli TWR (rimangono uguali, ma usando self.calculate_twr)
         twr_metrics = {}
