@@ -431,7 +431,7 @@ def main_view():
         st.subheader("Rischio & Rendimento")
         m = metrics
         c1, c2, c3 = st.columns(3)
-        c1.metric("Sharpe", f"{metrics.get('TWR Sharpe Ratio',0):.2f}")#c1.metric("Sharpe", f"{m['Sharpe Ratio']:.2f}")
+        c1.metric("Sharpe", f"{m['TWR Sharpe Ratio']:.2f}") #c1.metric("Sharpe", f"{metrics.get('TWR Sharpe Ratio',0):.2f}")
         c1.metric("Sortino", f"{m['Sortino Ratio']:.2f}")
         c2.metric("VaR 95%", f"${m['VaR 95% ($)']:.2f}")
         c2.metric("Max Drawdown", f"${m['Max Drawdown $']:.2f}")
