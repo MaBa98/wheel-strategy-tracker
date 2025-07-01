@@ -26,6 +26,7 @@ class PortfolioProcessor:
         self.cash_flows = sorted(cash_flows, key=lambda x: x['date'])
         # tutti i simboli coinvolti
         self.all_symbols = list({t['symbol'] for t in self.trades})
+        self.historical_prices = {}
 
     @staticmethod
     def get_price_on_date(historical_data: pd.DataFrame, target_date: date) -> float:
@@ -56,9 +57,10 @@ class PortfolioProcessor:
         end_date = date.today()
 
         # 2) Scarica una volta per tutte le serie storiche dei prezzi
-        historical_prices = await fetch_all_historical_data(
+        self.historical_prices = await fetch_all_historical_data(
             self.all_symbols, start_date, end_date
         )
+        historical_prices = self.historical_prices
 
         # 3) Costruzione dei log
         portfolio_history: List[Dict[str, Any]] = []
@@ -256,7 +258,6 @@ class PortfolioProcessor:
         return pd.DataFrame(portfolio_history), pd.DataFrame(expired_options_log)
 
     @staticmethod
-    @staticmethod
     def get_current_positions(trades: list[dict]) -> tuple[dict, list[dict]]:
         """
         Analizza i trade e restituisce le posizioni aperte separando azioni e opzioni.
@@ -286,43 +287,33 @@ class PortfolioProcessor:
 
         return stock_positions, open_options
     
-    @staticmethod
     def calculate_performance_metrics(
-        history: pd.DataFrame,
-        cash_flows: List[Dict] = None,
-        trades: List[Dict] = None
+        self,
+        history: pd.DataFrame
     ) -> Dict[str, Any]:
         """
-        Calcola metriche estese: VaR, Sortino, TWR, Sharpe-TWR,
-        Drawdown-duration, commissioni, breakdown per simbolo/tipo.
+        Calcola metriche estese. Ora è un metodo di istanza.
         """
         if history.empty:
             return {}
-        
-        # rendimenti giornalieri
-        ret = history['portfolio_value'].pct_change().dropna()
-        #rf = CONFIG['risk_free_rate']
-        rf = fetch_risk_free_rate()
 
-        # annualizza return e volatilità
+        # Usa i dati dall'istanza (self)
+        trades = self.trades
+        cash_flows = self.cash_flows
+
+        # Calcoli iniziali (rendimenti, rf, etc.) rimangono uguali...
+        ret = history['portfolio_value'].pct_change().dropna()
+        rf = fetch_risk_free_rate()
         ann_ret = ret.mean() * 252
         ann_vol = ret.std() * np.sqrt(252)
-
-        # total P&L e total return %
         total_pnl = history['equity_line_pnl'].iloc[-1]
         init_cf = history['cumulative_cash_flow'].iloc[0] or 1
         total_ret_pct = total_pnl / abs(init_cf) * 100
-
-        # Sharpe & Sortino
         sharpe = (ann_ret - rf) / ann_vol if ann_vol > 0 else 0
         down_rets = ret[ret < 0]
         dd_std = down_rets.std() * np.sqrt(252)
         sortino = (ann_ret - rf) / dd_std if dd_std > 0 else 0
-
-        # VaR 95% giornaliero ($)
         var95 = -np.percentile(ret, 5) * history['portfolio_value'].iloc[-1]
-
-        # Max Drawdown e durata
         eq = history['equity_line_pnl']
         running_max = eq.cummax()
         drawdown = running_max - eq
@@ -332,32 +323,60 @@ class PortfolioProcessor:
             cur = cur + 1 if flag else (durations.append(cur) or 0)
         durations.append(cur)
         max_dd_duration = max(durations)
-
-        # commissioni totali e impatto
         total_comm = sum(t.get('commission', 0) for t in trades) if trades else 0
         comm_impact_pct = total_comm / abs(init_cf) * 100
 
-        # breakdown P&L per simbolo e tipo
-        per_symbol, per_type = {}, {}
+        # --- BREAKDOWN P&L ---
+        per_symbol_pnl = {}
+        per_type_pnl = {}
+
         if trades:
             df_t = pd.DataFrame(trades)
+            
+            # 1. Calcola il puro flusso di cassa per ogni trade
             def net_cf(tr):
                 if tr['type'] == 'stock':
                     return -tr['quantity'] * tr['stock_price'] - tr.get('commission', 0)
-                prem = tr['premium']
+                prem = tr.get('premium', 0)
                 sign = 1 if tr['quantity'] < 0 else -1
                 return sign * prem - tr.get('commission', 0)
+            
             df_t['net_cf'] = df_t.apply(net_cf, axis=1)
-            per_symbol = df_t.groupby('symbol')['net_cf'].sum().to_dict()
-            per_type = df_t.groupby('type')['net_cf'].sum().to_dict()
+            per_symbol_pnl = df_t.groupby('symbol')['net_cf'].sum().to_dict()
+            per_type_pnl = df_t.groupby('type')['net_cf'].sum().to_dict()
 
-        # TWR e TWR-Sharpe
+            # 2. Aggiungi il valore di mercato (Mark-to-Market) delle posizioni aperte
+            today = history['date'].iloc[-1]
+            stock_positions, open_options = self.get_current_positions(trades)
+
+            # Aggiungi valore delle azioni aperte
+            for symbol, qty in stock_positions.items():
+                if qty != 0:
+                    latest_price = self.get_price_on_date(self.historical_prices.get(symbol), today)
+                    market_value = qty * latest_price
+                    per_symbol_pnl[symbol] = per_symbol_pnl.get(symbol, 0) + market_value
+                    per_type_pnl['stock'] = per_type_pnl.get('stock', 0) + market_value
+
+            # Aggiungi valore delle opzioni aperte
+            for opt in open_options:
+                price_now = self.get_price_on_date(self.historical_prices.get(opt['symbol']), today)
+                intrinsic = 0
+                if opt['type'] == 'put':
+                    intrinsic = max(0, opt['strike'] - price_now)
+                else: # call
+                    intrinsic = max(0, price_now - opt['strike'])
+                
+                val = intrinsic * abs(opt['quantity']) * opt.get('multiplier', 100)
+                market_value = -val if opt['quantity'] < 0 else val
+
+                per_symbol_pnl[opt['symbol']] = per_symbol_pnl.get(opt['symbol'], 0) + market_value
+                per_type_pnl[opt['type']] = per_type_pnl.get(opt['type'], 0) + market_value
+        
+        # Calcoli TWR (rimangono uguali, ma usando self.calculate_twr)
         twr_metrics = {}
         if cash_flows:
-            # calcola TWR e TWR-sharpe
-            from portfolio import PortfolioProcessor  # evita import circolare
-            twr_metrics = PortfolioProcessor.calculate_twr(history, cash_flows)
-            twr_daily = PortfolioProcessor.calculate_twr_daily_returns(history, cash_flows)
+            twr_metrics = self.calculate_twr(history, cash_flows)
+            twr_daily = self.calculate_twr_daily_returns(history, cash_flows)
             if len(twr_daily) > 1:
                 mu = np.mean(twr_daily) * 252
                 sigma = np.std(twr_daily) * np.sqrt(252)
@@ -365,8 +384,8 @@ class PortfolioProcessor:
             else:
                 sr_twr = 0
             twr_metrics["TWR Sharpe Ratio"] = sr_twr
-
-        # compone il dict finale
+        
+        # Compone il dict finale
         out = {
             "Total P&L": total_pnl,
             "Total Return %": total_ret_pct,
@@ -379,10 +398,11 @@ class PortfolioProcessor:
             "Max DD Duration (days)": max_dd_duration,
             "Total Commissions $": total_comm,
             "Comm Impact %": comm_impact_pct,
-            **{k: v * 100 for k, v in twr_metrics.items() if k in ["TWR", "Annualized TWR"]},
+            "TWR": twr_metrics.get("TWR", 0) * 100,
+            "Annualized TWR": twr_metrics.get("Annualized TWR", 0) * 100,
             "TWR Sharpe Ratio": twr_metrics.get("TWR Sharpe Ratio", 0),
-            "P&L per Symbol": per_symbol,
-            "P&L per Strategy": per_type
+            "P&L per Symbol": per_symbol_pnl,
+            "P&L per Strategy": per_type_pnl
         }
         return out
 
