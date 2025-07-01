@@ -308,8 +308,9 @@ def main_view():
             
             if not history_subset.empty:
                 # Calcola TWR cumulativo del portafoglio
-                initial_value = history_subset['cumulative_cash_flow'].iloc[0]
-                portfolio_twr = ((history_subset['equity_line_pnl'] / abs(initial_value)) * 100) if initial_value != 0 else pd.Series([0])
+                #initial_value = history_subset['cumulative_cash_flow'].iloc[0]
+                #portfolio_twr = ((history_subset['equity_line_pnl'] / abs(initial_value)) * 100) if initial_value != 0 else pd.Series([0])
+                portfolio_twr = metrics.get('TWR', 0)
                 
                 # Allinea le date per il confronto
                 portfolio_twr.index = history_subset['date']
