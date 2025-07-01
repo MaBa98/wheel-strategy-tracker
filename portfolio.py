@@ -312,7 +312,8 @@ class PortfolioProcessor:
         sharpe = (ann_ret - rf) / ann_vol if ann_vol > 0 else 0
         down_rets = ret[ret < 0]
         dd_std = down_rets.std() * np.sqrt(252)
-        sortino = (twr_metrics.get("TWR", 0) - rf) / dd_std if dd_std > 0 else 0 #sortino = (ann_ret - rf) / dd_std if dd_std > 0 else 0
+        #sortino = (ann_ret - rf) / dd_std if dd_std > 0 else 0
+        sortino = (twr_metrics.get("TWR", 0) - rf) / dd_std if dd_std > 0 else 0 
         var95 = -np.percentile(ret, 5) * history['portfolio_value'].iloc[-1]
         eq = history['equity_line_pnl']
         running_max = eq.cummax()
