@@ -590,7 +590,82 @@ def wheel_metrics_view():
         cols[3].metric("Max Drawdown", f"${agg_metrics['Max Drawdown $']:.2f}")
 
         st.info("Questa è una vista aggregata. Seleziona un simbolo dal menu per l'analisi dettagliata.")
-
+        
+        # --- ANALISI DRAWDOWN ---
+        st.subheader("📉 Drawdown Tracker")
+        dd_data = metrics['drawdown']
+        
+        if dd_data['drawdown_metrics']:
+            dd_metrics = dd_data['drawdown_metrics']
+            
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Max Drawdown", f"${dd_metrics['max_drawdown_dollar']:.2f}")
+            col2.metric("Max DD %", f"{dd_metrics['max_drawdown_pct']:.2f}%")
+            col3.metric("DD Corrente", f"${dd_metrics['current_drawdown']:.2f}")
+            col4.metric("Recovery Factor", f"{dd_metrics['recovery_factor']:.2f}")
+            
+            # Grafico drawdown
+            if 'drawdown_series' in dd_data:
+                import plotly.graph_objects as go
+                fig_dd = go.Figure()
+                fig_dd.add_trace(go.Scatter(
+                    x=st.session_state.portfolio_history['date'],
+                    y=-dd_data['drawdown_series'],  # Negativo per mostrare drawdown verso il basso
+                    name="Drawdown",
+                    fill='tozeroy',
+                    line=dict(color='red', width=1)
+                ))
+                fig_dd.update_layout(
+                    title="Analisi Drawdown nel Tempo",
+                    yaxis_title="Drawdown ($)",
+                    template='plotly_white',
+                    height=300
+                )
+                st.plotly_chart(fig_dd, use_container_width=True)
+            
+            with st.expander("Statistiche Drawdown Dettagliate"):
+                st.write(f"**Durata Media DD:** {dd_metrics['avg_drawdown_duration']:.1f} giorni")
+                st.write(f"**Durata Max DD:** {dd_metrics['max_drawdown_duration']:.0f} giorni")
+                st.write(f"**Frequenza DD:** {dd_metrics['drawdown_frequency_monthly']:.2f} per mese")
+                st.write(f"**Numero DD:** {dd_metrics['num_drawdowns']}")
+        
+        st.caption("*Drawdown Tracker analizza la profondità, durata e frequenza dei drawdown della strategia.*")
+        
+        # --- PROBABILITA' RECOVERY ---
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("🔄 Recovery Probability")
+            rec_data = metrics['recovery']
+            st.metric("Probabilità Recovery", f"{rec_data['recovery_prob']:.1f}%")
+            
+            if rec_data['components']:
+                with st.expander("Dettagli Recovery"):
+                    comp = rec_data['components']
+                    st.write(f"**Tempo Medio Recovery:** {comp['avg_recovery_time_days']:.1f} giorni")
+                    st.write(f"**Forza Recovery:** {comp['recovery_strength']:.2f}")
+                    st.write(f"**Confidence Score:** {comp['confidence_score']:.1f}%")
+                    st.write(f"**Eventi Recovery:** {comp['num_recovery_events']}")
+            
+            st.caption("*Recovery Probability stima la capacità della strategia di recuperare dai drawdown.*")
+        
+        with col2:
+            st.subheader("⚡ Wheel Continuation Score (WCS)")
+            wcs_data = metrics['wcs']
+            st.metric("WCS", f"{wcs_data['WCS']:.1f}%")
+            
+            if wcs_data['components']:
+                with st.expander("Dettagli WCS"):
+                    comp = wcs_data['components']
+                    st.write(f"**Trend Performance:** {comp['performance_trend']}")
+                    st.write(f"**Score Volatilità:** {comp['volatility_score']:.1f}%")
+                    st.write(f"**Frequenza Trading:** {comp['trading_frequency']:.2f} trades/mese")
+                    st.write(f"**Simboli:** {comp['num_symbols']}")
+                    st.write(f"**Tasso Assegnazione:** {comp['assignment_rate']:.1f}%")
+                    st.write(f"**Rating Sostenibilità:** {comp['sustainability_rating']}")
+            
+            st.caption("*WCS valuta la sostenibilità e continuabilità della strategia wheel.*")
+        
     else:
         # --- VISTA PER SIMBOLO ---
         selected_symbol = view_mode
