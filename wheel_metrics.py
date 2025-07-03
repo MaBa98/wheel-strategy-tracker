@@ -56,8 +56,8 @@ class WheelMetricsCalculator:
             capital_at_risk = 0
             for t in puts_sold:
                 capital_at_risk += t.get('strike', 0) * abs(t.get('quantity', 0)) * t.get('multiplier', 100)
-            for t in calls_sold:
-                capital_at_risk += t.get('strike', 0) * abs(t.get('quantity', 0)) * t.get('multiplier', 100)
+            #for t in calls_sold:
+                #capital_at_risk += t.get('strike', 0) * abs(t.get('quantity', 0)) * t.get('multiplier', 100)
 
             if expired_options.empty:
                 assignment_rate = 0
