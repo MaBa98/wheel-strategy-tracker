@@ -545,13 +545,13 @@ def main_view():
 def wheel_metrics_view():
     """Vista per le metriche avanzate della strategia Wheel."""
     st.title("🎯 Metriche Avanzate Wheel")
-    
+
     # Verifica dati disponibili
     if not st.session_state.get('trades') or st.session_state.get('portfolio_history', pd.DataFrame()).empty:
         st.warning("📊 Dati insufficienti per calcolare le metriche avanzate.")
         st.info("Aggiungi almeno alcuni trade nella pagina principale per visualizzare le metriche.")
         return
-    
+
     # Import qui per evitare errori circolari
     from wheel_metrics import WheelMetricsCalculator
     
@@ -562,206 +562,113 @@ def wheel_metrics_view():
         portfolio_history=st.session_state.portfolio_history,
         expired_options=st.session_state.get('expired_options_log', pd.DataFrame())
     )
-    
-    # Calcola tutte le metriche
-    with st.spinner("Calcolo metriche avanzate..."):
-        metrics = calculator.calculate_all_metrics()
-    
-    # Layout principale
-    col1, col2 = st.columns(2)
-    
-    # --- METRICHE PRINCIPALI ---
-    with col1:
-        st.subheader("🎯 Wheel Efficiency Score (WES)")
-        wes_data = metrics['wes']
-        st.metric("WES", f"{wes_data['WES']:.2f}%")
+
+    # Selettore per la vista: Aggregata vs Per Simbolo
+    view_mode = st.selectbox(
+        "Scegli la vista:",
+        options=['Portafoglio Aggregato'] + calculator.all_symbols,
+        index=0
+    )
+
+    st.markdown("---")
+
+    if view_mode == 'Portafoglio Aggregato':
+        # --- VISTA AGGREGATA (CODICE PRECEDENTE) ---
+        # Questa parte rimane quasi identica a prima, ma ricalcoliamo le metriche aggregate
+        st.header("Riepilogo Portafoglio Aggregato")
         
-        if wes_data['components']:
+        # Calcola le metriche aggregate (potresti voler creare un metodo apposito in WheelMetricsCalculator)
+        # Per ora, usiamo i calcoli originali che erano aggregati di default
+        from portfolio import PortfolioProcessor # ri-usiamo un processore per le metriche aggregate
+        processor = PortfolioProcessor(st.session_state.trades, st.session_state.cash_flows)
+        agg_metrics = processor.calculate_performance_metrics(st.session_state.portfolio_history)
+
+        cols = st.columns(4)
+        cols[0].metric("P&L Totale", f"${agg_metrics['Total P&L']:,.2f}")
+        cols[1].metric("TWR Annualizzato", f"{agg_metrics.get('Annualized TWR',0):.2f}%")
+        cols[2].metric("Sharpe (TWR)", f"{agg_metrics.get('TWR Sharpe Ratio',0):.2f}")
+        cols[3].metric("Max Drawdown", f"${agg_metrics['Max Drawdown $']:.2f}")
+
+        st.info("Questa è una vista aggregata. Seleziona un simbolo dal menu per l'analisi dettagliata.")
+
+    else:
+        # --- VISTA PER SIMBOLO ---
+        selected_symbol = view_mode
+        st.header(f"🔍 Analisi Dettagliata per: ${selected_symbol}")
+
+        with st.spinner(f"Calcolo metriche per {selected_symbol}..."):
+            all_metrics_by_symbol = calculator.calculate_all_metrics_by_symbol()
+            metrics = all_metrics_by_symbol.get(selected_symbol, {})
+
+        if not metrics:
+            st.error(f"Impossibile calcolare le metriche per {selected_symbol}.")
+            return
+
+        # --- GRAFICO RADAR ---
+        st.subheader("Radar di Performance")
+        
+        wes_comps = metrics['wes']['components']
+        wcs_comps = metrics['wcs']['components']
+        
+        # Normalizziamo i valori per il radar (scala 0-100)
+        radar_data = {
+            'WES': metrics['wes']['WES'] * 10, # Amplificato per visibilità
+            'WCS': metrics['wcs']['WCS'],
+            'Premium Yield': wes_comps.get('premium_yield', 0),
+            'Gestione Assegnazioni': 100 - wes_comps.get('assignment_rate', 100),
+            'Score Volatilità': wcs_comps.get('volatility_score', 0)
+        }
+        
+        radar_df = pd.DataFrame(dict(
+            r=list(radar_data.values()),
+            theta=list(radar_data.keys())
+        ))
+
+        fig_radar = go.Figure()
+        fig_radar.add_trace(go.Scatterpolar(
+            r=radar_df['r'],
+            theta=radar_df['theta'],
+            fill='toself',
+            name=selected_symbol
+        ))
+        
+        fig_radar.update_layout(
+            polar=dict(
+                radialaxis=dict(visible=True, range=[0, 100])
+            ),
+            showlegend=False,
+            title=f"Profilo Strategia per {selected_symbol}",
+            height=400
+        )
+        st.plotly_chart(fig_radar, use_container_width=True)
+        st.caption("Il grafico radar mostra i punteggi chiave su una scala normalizzata (0-100). Un'area più ampia indica una performance migliore.")
+        
+        st.markdown("---")
+
+        # --- DETTAGLIO METRICHE PER SIMBOLO ---
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader("🎯 Wheel Efficiency (WES)")
+            wes_data = metrics['wes']
+            st.metric("Score", f"{wes_data.get('WES', 0):.2f}%")
             with st.expander("Dettagli WES"):
-                comp = wes_data['components']
-                st.write(f"**Premio Incassato:** ${comp['premium_income']:,.2f}")
-                st.write(f"**Capitale a Rischio:** ${comp['capital_at_risk']:,.2f}")
-                st.write(f"**Yield Premio:** {comp['premium_yield']:.2f}%")
-                st.write(f"**Tasso Assegnazione:** {comp['assignment_rate']:.1f}%")
-                st.write(f"**DTE Medio:** {comp['avg_dte']:.0f} giorni")
+                if wes_data.get('components'):
+                    comp = wes_data['components']
+                    st.write(f"**Premio Incassato:** ${comp.get('premium_income', 0):,.2f}")
+                    st.write(f"**Capitale a Rischio:** ${comp.get('capital_at_risk', 0):,.2f}")
+                    st.write(f"**Yield Premio:** {comp.get('premium_yield', 0):.2f}%")
+                    st.write(f"**Tasso Assegnazione:** {comp.get('assignment_rate', 0):.1f}%")
+                    st.write(f"**DTE Medio:** {comp.get('avg_dte', 0):.0f} giorni")
         
-        st.caption("*WES misura l'efficienza della strategia wheel considerando premium income, assignment rate e fattore temporale.*")
-    
-    with col2:
-        st.subheader("📈 Relative Opportunity Index (ROI)")
-        roi_data = metrics['roi']
-        st.metric("ROI", f"{roi_data['ROI']:.2f}%")
-        
-        if roi_data['components']:
-            with st.expander("Dettagli ROI"):
-                comp = roi_data['components']
-                st.write(f"**Rendimento Strategia:** {comp['strategy_return']:.2f}%")
-                st.write(f"**Rendimento Benchmark:** {comp['benchmark_return']:.2f}%")
-                st.write(f"**Excess Return:** {comp['excess_return']:.2f}%")
-                st.write(f"**Simbolo Principale:** {comp['main_symbol']}")
-        
-        st.caption("*ROI confronta i rendimenti della strategia wheel con il buy-and-hold del sottostante.*")
-    
-    # --- ANALISI DRAWDOWN ---
-    st.subheader("📉 Drawdown Tracker")
-    dd_data = metrics['drawdown']
-    
-    if dd_data['drawdown_metrics']:
-        dd_metrics = dd_data['drawdown_metrics']
-        
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Max Drawdown", f"${dd_metrics['max_drawdown_dollar']:.2f}")
-        col2.metric("Max DD %", f"{dd_metrics['max_drawdown_pct']:.2f}%")
-        col3.metric("DD Corrente", f"${dd_metrics['current_drawdown']:.2f}")
-        col4.metric("Recovery Factor", f"{dd_metrics['recovery_factor']:.2f}")
-        
-        # Grafico drawdown
-        if 'drawdown_series' in dd_data:
-            import plotly.graph_objects as go
-            fig_dd = go.Figure()
-            fig_dd.add_trace(go.Scatter(
-                x=st.session_state.portfolio_history['date'],
-                y=-dd_data['drawdown_series'],  # Negativo per mostrare drawdown verso il basso
-                name="Drawdown",
-                fill='tozeroy',
-                line=dict(color='red', width=1)
-            ))
-            fig_dd.update_layout(
-                title="Analisi Drawdown nel Tempo",
-                yaxis_title="Drawdown ($)",
-                template='plotly_white',
-                height=300
-            )
-            st.plotly_chart(fig_dd, use_container_width=True)
-        
-        with st.expander("Statistiche Drawdown Dettagliate"):
-            st.write(f"**Durata Media DD:** {dd_metrics['avg_drawdown_duration']:.1f} giorni")
-            st.write(f"**Durata Max DD:** {dd_metrics['max_drawdown_duration']:.0f} giorni")
-            st.write(f"**Frequenza DD:** {dd_metrics['drawdown_frequency_monthly']:.2f} per mese")
-            st.write(f"**Numero DD:** {dd_metrics['num_drawdowns']}")
-    
-    st.caption("*Drawdown Tracker analizza la profondità, durata e frequenza dei drawdown della strategia.*")
-    
-    # --- PROBABILITA' RECOVERY ---
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("🔄 Recovery Probability")
-        rec_data = metrics['recovery']
-        st.metric("Probabilità Recovery", f"{rec_data['recovery_prob']:.1f}%")
-        
-        if rec_data['components']:
-            with st.expander("Dettagli Recovery"):
-                comp = rec_data['components']
-                st.write(f"**Tempo Medio Recovery:** {comp['avg_recovery_time_days']:.1f} giorni")
-                st.write(f"**Forza Recovery:** {comp['recovery_strength']:.2f}")
-                st.write(f"**Confidence Score:** {comp['confidence_score']:.1f}%")
-                st.write(f"**Eventi Recovery:** {comp['num_recovery_events']}")
-        
-        st.caption("*Recovery Probability stima la capacità della strategia di recuperare dai drawdown.*")
-    
-    with col2:
-        st.subheader("⚡ Wheel Continuation Score (WCS)")
-        wcs_data = metrics['wcs']
-        st.metric("WCS", f"{wcs_data['WCS']:.1f}%")
-        
-        if wcs_data['components']:
+        with col2:
+            st.subheader("⚡️ Wheel Continuation (WCS)")
+            wcs_data = metrics['wcs']
+            st.metric("Score", f"{wcs_data.get('WCS', 0):.1f}%", f"Rating: {wcs_data.get('components', {}).get('sustainability_rating', 'N/A')}")
             with st.expander("Dettagli WCS"):
-                comp = wcs_data['components']
-                st.write(f"**Trend Performance:** {comp['performance_trend']}")
-                st.write(f"**Score Volatilità:** {comp['volatility_score']:.1f}%")
-                st.write(f"**Frequenza Trading:** {comp['trading_frequency']:.2f} trades/mese")
-                st.write(f"**Simboli:** {comp['num_symbols']}")
-                st.write(f"**Tasso Assegnazione:** {comp['assignment_rate']:.1f}%")
-                st.write(f"**Rating Sostenibilità:** {comp['sustainability_rating']}")
-        
-        st.caption("*WCS valuta la sostenibilità e continuabilità della strategia wheel.*")
-    
-    # --- RIEPILOGO GENERALE ---
-    st.subheader("📋 Riepilogo Metriche")
-    
-    # Tabella riassuntiva
-    summary_data = {
-        "Metrica": ["WES", "ROI", "Recovery Prob", "WCS"],
-        "Valore": [
-            f"{metrics['wes']['WES']:.2f}%",
-            f"{metrics['roi']['ROI']:.2f}%",
-            f"{metrics['recovery']['recovery_prob']:.1f}%",
-            f"{metrics['wcs']['WCS']:.1f}%"
-        ],
-        "Valutazione": [
-            "Eccellente" if metrics['wes']['WES'] > 5 else "Buona" if metrics['wes']['WES'] > 2 else "Migliorabile",
-            "Positiva" if metrics['roi']['ROI'] > 0 else "Negativa",
-            "Alta" if metrics['recovery']['recovery_prob'] > 80 else "Media" if metrics['recovery']['recovery_prob'] > 50 else "Bassa",
-            metrics['wcs']['components'].get('sustainability_rating', 'N/A') if metrics['wcs']['components'] else 'N/A'
-        ]
-    }
-    
-    st.dataframe(pd.DataFrame(summary_data), use_container_width=True)
-    
-    # Interpretazione
-    st.subheader("🎯 Interpretazione Risultati")
-    
-    interpretations = []
-    
-    # WES
-    wes_val = metrics['wes']['WES']
-    if wes_val > 5:
-        interpretations.append("✅ **WES Eccellente**: La strategia wheel sta generando un ottimo rendimento risk-adjusted")
-    elif wes_val > 2:
-        interpretations.append("⚠️ **WES Buono**: Performance discreta ma c'è margine di miglioramento")
-    else:
-        interpretations.append("❌ **WES Basso**: Considera di ottimizzare la selezione dei trade o i parametri")
-    
-    # ROI
-    roi_val = metrics['roi']['ROI']
-    if roi_val > 5:
-        interpretations.append("✅ **ROI Superiore**: La strategia wheel sta battendo significativamente il benchmark")
-    elif roi_val > 0:
-        interpretations.append("⚠️ **ROI Positivo**: Performance migliore del benchmark ma moderata")
-    else:
-        interpretations.append("❌ **ROI Negativo**: La strategia sta underperformando il benchmark")
-    
-    # Recovery
-    rec_val = metrics['recovery']['recovery_prob']
-    if rec_val > 80:
-        interpretations.append("✅ **Recovery Alta**: Ottima capacità di recupero dai drawdown")
-    elif rec_val > 50:
-        interpretations.append("⚠️ **Recovery Media**: Capacità di recupero accettabile")
-    else:
-        interpretations.append("❌ **Recovery Bassa**: Attenzione alla gestione del rischio")
-    
-    # WCS
-    wcs_val = metrics['wcs']['WCS']
-    if wcs_val > 70:
-        interpretations.append("✅ **WCS Alto**: Strategia altamente sostenibile nel lungo periodo")
-    elif wcs_val > 40:
-        interpretations.append("⚠️ **WCS Medio**: Sostenibilità moderata, monitora attentamente")
-    else:
-        interpretations.append("❌ **WCS Basso**: Rivedi la strategia per migliorare la sostenibilità")
-    
-    for interp in interpretations:
-        st.write(interp)
-    
-    # Suggerimenti
-    st.subheader("💡 Suggerimenti per Ottimizzazione")
-    
-    suggestions = []
-    
-    if metrics['wes']['WES'] < 3:
-        suggestions.append("📈 **Migliora WES**: Considera strike più vicini al denaro o scadenze più brevi")
-    
-    if metrics['roi']['ROI'] < 0:
-        suggestions.append("🎯 **Migliora ROI**: Valuta una selezione più rigorosa dei sottostanti")
-    
-    if metrics['recovery']['recovery_prob'] < 60:
-        suggestions.append("🛡️ **Migliora Recovery**: Implementa stop-loss o ridimensiona le posizioni")
-    
-    if metrics['wcs']['WCS'] < 50:
-        suggestions.append("⚡ **Migliora WCS**: Aumenta la diversificazione e ottimizza la frequenza dei trade")
-    
-    if not suggestions:
-        suggestions.append("🎉 **Ottimo Lavoro**: Le metriche indicano una strategia wheel ben ottimizzata!")
-    
-    for sugg in suggestions:
-        st.write(sugg)
+                if wcs_data.get('components'):
+                    comp = wcs_data['components']
+                    st.write(f"**Frequenza Trading:** {comp.get('trading_frequency', 0):.2f} trades/mese")
+                    st.write(f"**Score Volatilità:** {comp.get('volatility_score', 0):.1f}%")
+                    st.write(f"**Tasso Assegnazione:** {comp.get('assignment_rate', 0):.1f}%")
+
