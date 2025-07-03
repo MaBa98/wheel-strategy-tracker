@@ -2,8 +2,7 @@ import os, streamlit as st
 import asyncio
 import pandas as pd
 
-#from ui_components import ui_sidebar, main_view
-from ui_components import login_view, ui_sidebar, main_view
+from ui_components import login_view, ui_sidebar, main_view, wheel_metrics_view
 from data_store import fetch_trades, fetch_cashflows
 
 
@@ -26,10 +25,17 @@ def main():
             st.session_state.portfolio_history = pd.DataFrame()
             st.session_state.expired_options_log = pd.DataFrame()
 
-    # 3) Se l'utente è loggato e i dati sono presenti, mostra l'app principale
-    ui_sidebar()
-    main_view()
+    # 3) Navigazione tra pagine
+    with st.sidebar:
+        st.markdown("---")
+        page = st.radio("📄 Navigazione", ["Dashboard", "Metriche Avanzate"], index=0)
+
+    # 4) Mostra sidebar solo per la pagina Dashboard
+    if page == "Dashboard":
+        ui_sidebar()
+        main_view()
+    elif page == "Metriche Avanzate":
+        wheel_metrics_view()
 
 if __name__ == "__main__":
     main()
-
