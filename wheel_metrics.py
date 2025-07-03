@@ -39,10 +39,16 @@ class WheelMetricsCalculator:
             total_premium = sum(abs(t.get('premium', 0)) for t in puts_sold + calls_sold)
             
             # Calcolo capital at risk (strike * contracts * multiplier)
-            capital_at_risk = sum(
-                t.get('strike', 0) * abs(t.get('quantity', 0)) * t.get('multiplier', 100)
-                for t in puts_sold + calls_sold
-            )
+            capital_at_risk = 0
+            for t in puts_sold:
+                # Per PUT vendute: capital at risk = strike * contracts * multiplier
+                capital_at_risk += t.get('strike', 0) * abs(t.get('quantity', 0)) * t.get('multiplier', 100)
+            
+            # Per CALL vendute, il capital at risk è il valore delle azioni sottostanti
+            for t in calls_sold:
+                # Stima valore azioni = strike * contracts * multiplier (approssimazione)
+                capital_at_risk += t.get('strike', 0) * abs(t.get('quantity', 0)) * t.get('multiplier', 100)
+
             
             # Assignment rate
             if self.expired_options.empty:
@@ -155,7 +161,12 @@ class WheelMetricsCalculator:
             equity_line = self.portfolio_history['equity_line_pnl']
             running_max = equity_line.cummax()
             drawdown = running_max - equity_line
-            drawdown_pct = (drawdown / running_max.abs()) * 100
+            
+            initial_capital = abs(self.portfolio_history['cumulative_cash_flow'].iloc[0])
+            if initial_capital > 0:
+                drawdown_pct = (drawdown / initial_capital) * 100
+            else:
+                drawdown_pct = pd.Series([0] * len(drawdown))
             
             # Metriche drawdown
             max_drawdown = drawdown.max()
